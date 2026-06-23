@@ -1,27 +1,9 @@
 import { env } from "@/config/env";
 import axios, { AxiosError } from "axios";
-
-function resolveApiBaseUrl() {
-  const raw = env.NEXT_PUBLIC_BACKEND_API_URL;
-  if (!raw) return "";
-
-  if (typeof window === "undefined") {
-    return raw;
-  }
-
-  try {
-    const url = new URL(raw);
-    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
-      url.hostname = window.location.hostname;
-    }
-    return url.toString().replace(/\/$/, "");
-  } catch {
-    return raw;
-  }
-}
+import { resolveBackendApiBaseUrl } from "@/lib/api/resolveBackendUrl";
 
 export const api = axios.create({
-  baseURL: resolveApiBaseUrl(),
+  baseURL: resolveBackendApiBaseUrl(),
   timeout: 10000,
   withCredentials: true,
 });

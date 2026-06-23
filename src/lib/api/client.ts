@@ -1,8 +1,8 @@
 import axios from "axios";
-import { env } from "@/config/env";
+import { resolveBackendApiBaseUrl } from "@/lib/api/resolveBackendUrl";
 
 export const apiClient = axios.create({
-  baseURL: env.NEXT_PUBLIC_BACKEND_API_URL,
+  baseURL: resolveBackendApiBaseUrl(),
   timeout: 10000,
 });
 
