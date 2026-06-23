@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   isAwaitingAdminReview,
   resolveJewellerDocumentUrl,
@@ -18,10 +18,10 @@ function getAdminSupabase() {
 }
 
 type BoutiqueRow = Record<string, unknown>;
+type AdminSupabase = SupabaseClient;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function syncBoutiqueAssetUrls(
-  supabase: any,
+  supabase: AdminSupabase,
   boutique: BoutiqueRow,
   supabaseUrl: string,
 ) {
@@ -60,9 +60,8 @@ async function syncBoutiqueAssetUrls(
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function syncBusinessDocumentUrls(
-  supabase: any,
+  supabase: AdminSupabase,
   documents: BusinessDocument[],
   supabaseUrl: string,
 ) {

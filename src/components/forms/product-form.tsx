@@ -17,7 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { GripVertical, Star } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, type SubmitHandler } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -94,6 +94,14 @@ function suggestSizes(categoryName: string): string[] {
     if (norm.includes(key)) return sizes;
   }
   return [...SIZE_PRESETS_BY_KEYWORD.ring];
+}
+
+function normalizeFormStatus(
+  status?: Product["status"],
+): "active" | "draft" | "archived" {
+  const normalized = String(status ?? "active").toLowerCase();
+  if (normalized === "draft" || normalized === "archived") return normalized;
+  return "active";
 }
 
 export function ProductForm({ product, onSaved }: ProductFormProps) {
@@ -180,7 +188,7 @@ export function ProductForm({ product, onSaved }: ProductFormProps) {
         image: product?.image ?? initialImages[0] ?? "",
         description: product?.description ?? "",
         is_trending: Boolean(product?.is_trending ?? product?.trending),
-        status: product?.status ?? "active",
+        status: normalizeFormStatus(product?.status),
         images: initialImages,
         video_url: product?.video_url ?? "",
         video_thumbnail: product?.video_thumbnail ?? "",
@@ -209,7 +217,7 @@ export function ProductForm({ product, onSaved }: ProductFormProps) {
     toast.success("Loaded suggested sizes for this category");
   }, [selectedCategoryName]);
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit: SubmitHandler<FormValues> = async (values) => {
     setSubmitError(null);
     try {
       const orderedImages = values.images ?? [];

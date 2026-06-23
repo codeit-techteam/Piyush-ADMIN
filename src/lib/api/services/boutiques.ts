@@ -150,6 +150,18 @@ export async function getBoutiqueDetails(id: string) {
         typeof legacy.is_featured === "boolean"
           ? legacy.is_featured
           : Boolean(legacy.featured),
+      store_status:
+        typeof legacy.store_status === "string"
+          ? (legacy.store_status as BoutiqueDetails["store_status"])
+          : null,
+      is_self_managed: Boolean(legacy.is_self_managed),
+      jeweller_user_id:
+        typeof legacy.jeweller_user_id === "string" ? legacy.jeweller_user_id : null,
+      owner_name: typeof legacy.owner_name === "string" ? legacy.owner_name : null,
+      member_id: typeof legacy.member_id === "string" ? legacy.member_id : null,
+      is_onboarding_done: Boolean(legacy.is_onboarding_done),
+      products_count:
+        typeof legacy.products_count === "number" ? legacy.products_count : null,
     } satisfies BoutiqueDetails;
   }
 }

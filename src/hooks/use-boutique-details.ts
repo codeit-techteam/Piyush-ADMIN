@@ -20,7 +20,13 @@ export function useUpdateBoutique(id: string) {
       await queryClient.cancelQueries({ queryKey: ["boutiques", id] });
       const previous = queryClient.getQueryData<BoutiqueDetails>(["boutiques", id]);
       queryClient.setQueryData<BoutiqueDetails>(["boutiques", id], (old) =>
-        old ? { ...old, ...payload, updated_at: new Date().toISOString() } : old,
+        old
+          ? ({
+              ...old,
+              ...payload,
+              updated_at: new Date().toISOString(),
+            } as BoutiqueDetails)
+          : old,
       );
       return { previous };
     },

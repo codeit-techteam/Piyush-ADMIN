@@ -106,7 +106,7 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
   async function openEdit(row: T) {
     setCreating(false);
     setEditing(row);
-    setDraft({ ...row });
+    setDraft({ ...row } as CmsPayload);
     setProductIds(row.product_ids ?? []);
     // Always refresh against the source of truth so the product picker shows
     // every product currently linked in the junction table (even ones added
@@ -114,7 +114,7 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
     try {
       const fresh = await getCmsItem<T>(section, row.id);
       setEditing(fresh);
-      setDraft({ ...fresh });
+      setDraft({ ...fresh } as CmsPayload);
       setProductIds(fresh.product_ids ?? []);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not load latest data");
@@ -166,7 +166,11 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
     try {
       await update.mutateAsync({
         id: row.id,
-        payload: { ...row, is_active: !row.is_active, product_ids: row.product_ids ?? [] },
+        payload: {
+          ...row,
+          is_active: !row.is_active,
+          product_ids: row.product_ids ?? [],
+        } as unknown as CmsPayload,
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Update failed");
