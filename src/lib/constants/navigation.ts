@@ -1,0 +1,62 @@
+import {
+  Bell,
+  Building2,
+  CalendarClock,
+  Gift,
+  Headphones,
+  MessageCircle,
+  HeartHandshake,
+  LayoutDashboard,
+  Menu as MenuIcon,
+  Package,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Tag,
+  Ticket,
+  Users,
+} from "lucide-react";
+import { ROUTES } from "./routes";
+
+export type NavItem = {
+  title: string;
+  href: string;
+  icon: React.ElementType;
+  badgeKey?: "jeweller_pending";
+};
+
+// Workaround: import React type for NavItem without importing React itself
+import type React from "react";
+
+export const sidebarNav: NavItem[] = [
+  { title: "Dashboard", href: ROUTES.dashboard, icon: LayoutDashboard },
+  { title: "Products", href: ROUTES.products, icon: Package },
+  { title: "Categories", href: ROUTES.categories, icon: Tag },
+  { title: "Collections", href: ROUTES.collections, icon: Sparkles },
+  { title: "Occasions", href: ROUTES.occasions, icon: CalendarClock },
+  { title: "Featured Sections", href: ROUTES.featured, icon: Star },
+  { title: "Menu (Shop For)", href: ROUTES.menu, icon: MenuIcon },
+  { title: "Offers", href: ROUTES.offers, icon: Ticket },
+  { title: "Gifts", href: ROUTES.gifts, icon: Gift },
+  {
+    title: "Shop by relationship",
+    href: ROUTES.relationshipSections,
+    icon: HeartHandshake,
+  },
+  { title: "Boutiques", href: ROUTES.boutiques, icon: Building2 },
+  {
+    title: "Jeweller Approvals",
+    href: ROUTES.jewellerApprovals,
+    icon: ShieldCheck,
+    badgeKey: "jeweller_pending",
+  },
+  { title: "Users", href: ROUTES.users, icon: Users },
+  { title: "Notification Management", href: ROUTES.notifications, icon: Bell },
+  { title: "Appointments", href: ROUTES.appointments, icon: CalendarClock },
+  { title: "Support Center", href: ROUTES.supportCenter, icon: MessageCircle },
+  {
+    title: "Callback Requests",
+    href: ROUTES.supportCallbackRequests,
+    icon: Headphones,
+  },
+];
