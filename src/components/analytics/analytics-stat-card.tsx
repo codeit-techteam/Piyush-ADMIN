@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import { TrendingDown, TrendingUp } from "lucide-react";
@@ -16,6 +17,7 @@ interface AnalyticsStatCardProps {
   icon?: LucideIcon;
   growthPercent?: number | null;
   trendSeries?: AnalyticsSeriesPoint[];
+  href?: string;
 }
 
 function MiniSparkline({ series }: { series?: AnalyticsSeriesPoint[] }) {
@@ -53,23 +55,19 @@ export function AnalyticsStatCard({
   icon: Icon,
   growthPercent,
   trendSeries,
+  href,
 }: AnalyticsStatCardProps) {
   const hasGrowth = growthPercent != null && !Number.isNaN(growthPercent);
   const positive = (growthPercent ?? 0) >= 0;
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="premium-card-hover"
+  const card = (
+    <Card
+      className={cn(
+        "premium-card-hover relative overflow-hidden",
+        highlight && "border-blue-300 bg-gradient-to-br from-blue-50 to-white",
+        href && "cursor-pointer transition-shadow hover:shadow-md",
+      )}
     >
-      <Card
-        className={cn(
-          "premium-card-hover relative overflow-hidden",
-          highlight && "border-blue-300 bg-gradient-to-br from-blue-50 to-white",
-        )}
-      >
         {highlight ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-400 to-transparent" />
         ) : null}
@@ -134,6 +132,22 @@ export function AnalyticsStatCard({
           ) : null}
         </div>
       </Card>
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="premium-card-hover"
+    >
+      {href ? (
+        <Link href={href} className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+          {card}
+        </Link>
+      ) : (
+        card
+      )}
     </motion.div>
   );
 }

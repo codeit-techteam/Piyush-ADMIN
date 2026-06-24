@@ -1,6 +1,5 @@
 import {
   Bell,
-  Building2,
   CalendarClock,
   Gift,
   Headphones,
@@ -8,12 +7,9 @@ import {
   HeartHandshake,
   LayoutDashboard,
   Menu as MenuIcon,
+  Building2,
   Package,
-  ShieldCheck,
   Sparkles,
-  Star,
-  Tag,
-  Ticket,
   Users,
 } from "lucide-react";
 import { ROUTES } from "./routes";
@@ -31,23 +27,19 @@ import type React from "react";
 export const sidebarNav: NavItem[] = [
   { title: "Dashboard", href: ROUTES.dashboard, icon: LayoutDashboard },
   { title: "Products", href: ROUTES.products, icon: Package },
-  { title: "Categories", href: ROUTES.categories, icon: Tag },
   { title: "Collections", href: ROUTES.collections, icon: Sparkles },
   { title: "Occasions", href: ROUTES.occasions, icon: CalendarClock },
-  { title: "Featured Sections", href: ROUTES.featured, icon: Star },
   { title: "Menu (Shop For)", href: ROUTES.menu, icon: MenuIcon },
-  { title: "Offers", href: ROUTES.offers, icon: Ticket },
   { title: "Gifts", href: ROUTES.gifts, icon: Gift },
   {
     title: "Shop by relationship",
     href: ROUTES.relationshipSections,
     icon: HeartHandshake,
   },
-  { title: "Boutiques", href: ROUTES.boutiques, icon: Building2 },
   {
-    title: "Jeweller Approvals",
-    href: ROUTES.jewellerApprovals,
-    icon: ShieldCheck,
+    title: "Boutiques",
+    href: ROUTES.boutiques,
+    icon: Building2,
     badgeKey: "jeweller_pending",
   },
   { title: "Users", href: ROUTES.users, icon: Users },

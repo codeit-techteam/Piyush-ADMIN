@@ -19,7 +19,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   gifts: "Gifts",
   "relationship-sections": "Shop by Relationship",
   boutiques: "Boutiques",
-  "jeweller-approvals": "Jeweller Approvals",
+  "jeweller-approvals": "Boutiques",
   users: "Users",
   notifications: "Notifications",
   send: "Send",

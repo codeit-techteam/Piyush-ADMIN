@@ -4,6 +4,8 @@ export const ROUTES = {
   products: "/products",
   collections: "/collections",
   boutiques: "/boutiques",
+  boutiquesWithTab: (tab: "pending" | "approved" | "rejected" | "all") =>
+    `/boutiques?tab=${tab}`,
   jewellerApprovals: "/jeweller-approvals",
   storeReview: (id: string) => `/jeweller-approvals/${id}`,
   users: "/users",

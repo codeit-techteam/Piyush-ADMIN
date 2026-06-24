@@ -28,7 +28,6 @@ export function CustomerDashboard({ data }: CustomerDashboardProps) {
           <AnalyticsStatCard title="New Users" value={cards.newUsers ?? 0} />
           <AnalyticsStatCard title="Wishlist Activity" value={cards.wishlistActivity ?? 0} />
           <AnalyticsStatCard title="Search Trends" value={cards.searchTrends ?? 0} />
-          <AnalyticsStatCard title="Recently Viewed" value={cards.recentlyViewedCount ?? 0} />
         </section>
 
         <section className="grid gap-4 lg:grid-cols-2">

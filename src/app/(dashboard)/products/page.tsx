@@ -6,16 +6,14 @@ import { DataTable } from "@/components/tables/data-table";
 import { ErrorState } from "@/components/feedback/error-state";
 import { useProducts } from "@/hooks/use-products";
 import { DashboardSkeleton } from "@/components/loaders/dashboard-skeleton";
-import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/lib/constants/routes";
 
 type ProductRow = {
   id: string;
   name: string;
   category: string;
-  status: string;
+  boutique: string;
   price: string;
-  owner: string;
 };
 
 export default function ProductsPage() {
@@ -28,31 +26,22 @@ export default function ProductsPage() {
         id: product.id,
         name: product.name,
         category: product.category_name ?? product.category,
-        status: product.status,
+        boutique: product.boutique_name ?? "—",
         price: `INR ${Number(product.price ?? 0).toLocaleString("en-IN")}`,
-        owner: product.owner_jeweller_id ? "Jeweller" : "Platform",
       })),
     [data],
   );
 
+  const totalProducts = data?.length ?? 0;
+
   return (
     <div className="space-y-4">
       <section className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">Products Oversight</h1>
-            <p className="text-sm text-slate-600">
-              View jeweller-owned product data. Use detail view for Flag / Suspend / Correction.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={() => router.push(ROUTES.productActivity)} variant="outline">
-              Activity Feed
-            </Button>
-            <Button onClick={() => router.push(ROUTES.newProduct)} variant="outline">
-              Add Platform Product
-            </Button>
-          </div>
+        <div>
+          <h1 className="text-xl font-semibold">Products</h1>
+          <p className="text-sm text-slate-600">
+            {isLoading ? "Loading products…" : `${totalProducts} total products`}
+          </p>
         </div>
         {isLoading ? <DashboardSkeleton /> : null}
         {isError ? (
@@ -62,9 +51,8 @@ export default function ProductsPage() {
             columns={[
               { key: "name", header: "Name" },
               { key: "category", header: "Category" },
-              { key: "status", header: "Status", asStatus: true },
+              { key: "boutique", header: "Boutique" },
               { key: "price", header: "Price" },
-              { key: "owner", header: "Owner" },
             ]}
             data={isLoading ? [] : rows}
             getRowKey={(row) => row.id}

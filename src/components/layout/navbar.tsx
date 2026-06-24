@@ -1,23 +1,19 @@
 "use client";
 
 import { format } from "date-fns";
-import { LogOut, Search } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Breadcrumbs } from "@/components/layout/breadcrumbs";
 import { NotificationCenter } from "@/components/layout/notification-center";
 import { Button } from "@/components/ui/button";
-import { sidebarNav } from "@/lib/constants/navigation";
 import { useAuthStore } from "@/store/auth-store";
-import { cn } from "@/lib/utils";
 
 export function Navbar() {
   const router = useRouter();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [now, setNow] = useState(() => new Date());
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [lastSync, setLastSync] = useState(() => new Date());
 
   useEffect(() => {
@@ -35,21 +31,6 @@ export function Navbar() {
     toast.success("Logged out successfully");
     router.replace("/login");
   };
-
-  const searchResults = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return [];
-    return sidebarNav.filter((item) => item.title.toLowerCase().includes(q)).slice(0, 6);
-  }, [searchQuery]);
-
-  const goToNav = useCallback(
-    (href: string) => {
-      setSearchOpen(false);
-      setSearchQuery("");
-      router.push(href);
-    },
-    [router],
-  );
 
   const dateLabel = format(now, "EEE, MMM d, yyyy");
   const syncLabel = format(lastSync, "h:mm a");
@@ -74,54 +55,6 @@ export function Navbar() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setSearchOpen((v) => !v)}
-              className={cn(
-                "flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 transition-all duration-200",
-                "hover:border-blue-300 hover:text-slate-700",
-                searchOpen && "border-blue-400 bg-blue-50/50",
-              )}
-              aria-label="Quick search"
-              aria-expanded={searchOpen}
-            >
-              <Search className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Search…</span>
-            </button>
-            {searchOpen ? (
-              <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl sm:w-80">
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Find a page…"
-                  className="focus-gold w-full border-b border-slate-100 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 outline-none"
-                  autoFocus
-                />
-                <ul className="max-h-48 overflow-y-auto py-1">
-                  {searchResults.length === 0 ? (
-                    <li className="px-4 py-6 text-center text-xs text-slate-500">
-                      {searchQuery ? "No matching pages" : "Type to search navigation"}
-                    </li>
-                  ) : (
-                    searchResults.map((item) => (
-                      <li key={item.href}>
-                        <button
-                          type="button"
-                          onClick={() => goToNav(item.href)}
-                          className="w-full px-4 py-2.5 text-left text-sm text-slate-700 transition-colors duration-200 hover:bg-blue-50 hover:text-blue-700"
-                        >
-                          {item.title}
-                        </button>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </div>
-            ) : null}
-          </div>
-
           <NotificationCenter />
 
           <div

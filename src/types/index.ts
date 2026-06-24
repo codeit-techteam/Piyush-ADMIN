@@ -205,6 +205,24 @@ export interface StoreReviewDetails {
   verification_rejected_reason?: string | null;
 }
 
+export interface BoutiqueProductSummary {
+  id: string;
+  name: string;
+  price: number;
+  image: string | null;
+  category_id: string | null;
+  category: { id: string; name: string } | null;
+  collection: string | null;
+  collection_name: string | null;
+  trending: boolean;
+  video_url: string | null;
+  video_thumbnail: string | null;
+  status?: string;
+  is_draft?: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 export interface Boutique {
   id: string;
   name: string;
@@ -224,6 +242,7 @@ export interface Boutique {
   onboarding_step?: number | null;
   is_onboarding_done: boolean;
   contact_number: string | null;
+  phone_number?: string | null;
   products_count: number | null;
   created_at?: string | null;
   status?: string;
@@ -236,6 +255,7 @@ export interface Boutique {
   admin_note?: string | null;
   verification_rejected_reason?: string | null;
   verified_at?: string | null;
+  deleted_at?: string | null;
 }
 
 export type BoutiqueStatus = "active" | "inactive";

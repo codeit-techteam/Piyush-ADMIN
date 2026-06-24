@@ -15,12 +15,16 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStoreReview } from "@/hooks/use-store-review";
-import { patchBoutiqueAdmin } from "@/lib/api/services/boutiques";
+import {
+  approveBoutiqueStore,
+  notifyBoutiqueJeweller,
+  rejectBoutiqueStore,
+} from "@/lib/api/services/boutiques";
 import { ROUTES } from "@/lib/constants/routes";
 import {
-  isAwaitingAdminReview,
   MIN_PRODUCTS_FOR_LAUNCH,
 } from "@/lib/jeweller-documents";
+import { isPendingStoreStatus } from "@/lib/boutique-approval";
 import { AssetPreview } from "@/components/store-review/asset-preview";
 import {
   ReviewField,
@@ -31,6 +35,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/feedback/error-state";
+import { BoutiqueProductsSection } from "@/components/boutiques/boutique-products-section";
 import type { StoreApprovalStatus, StoreReviewDetails } from "@/types";
 
 function StatusBadge({ status }: { status: StoreApprovalStatus | null }) {
@@ -89,28 +94,15 @@ function RejectDialog({
     }
     setIsSubmitting(true);
     try {
-      await patchBoutiqueAdmin(store.id, {
-        verification_status: "REJECTED",
-        verification_rejected_reason: reason.trim(),
-        is_verified: false,
-        is_featured: false,
-        is_active: false,
-      });
+      await rejectBoutiqueStore(store.id);
 
       if (store.jeweller_user_id) {
-        const notifyRes = await fetch("/api/admin/boutique-notify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            jeweller_user_id: store.jeweller_user_id,
-            boutique_id: store.id,
-            reason: reason.trim(),
-            event: "rejected",
-          }),
+        await notifyBoutiqueJeweller({
+          jeweller_user_id: store.jeweller_user_id,
+          boutique_id: store.id,
+          reason: reason.trim(),
+          event: "rejected",
         });
-        if (!notifyRes.ok) {
-          console.warn("[store-review] notification insert failed (non-fatal)");
-        }
       }
 
       await queryClient.invalidateQueries({ queryKey: ["boutiques"] });
@@ -172,28 +164,19 @@ export default function StoreReviewPage() {
     if (!store) return;
     setIsApproving(true);
     try {
-      await patchBoutiqueAdmin(store.id, {
-        verification_status: "APPROVED",
-      });
+      await approveBoutiqueStore(store.id);
 
       if (store.jeweller_user_id) {
-        const notifyRes = await fetch("/api/admin/boutique-notify", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            jeweller_user_id: store.jeweller_user_id,
-            boutique_id: store.id,
-            event: "approved",
-          }),
+        await notifyBoutiqueJeweller({
+          jeweller_user_id: store.jeweller_user_id,
+          boutique_id: store.id,
+          event: "approved",
         });
-        if (!notifyRes.ok) {
-          console.warn("[store-review] approval notification failed (non-fatal)");
-        }
       }
       await queryClient.invalidateQueries({ queryKey: ["boutiques"] });
       await queryClient.invalidateQueries({ queryKey: ["store-review", store.id] });
-      toast.success(`${store.name} documents approved — Verify button unlocked on Boutiques page`);
-      router.push(ROUTES.jewellerApprovals);
+      toast.success(`${store.name} approved`);
+      router.push(ROUTES.boutiques);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to approve store");
     } finally {
@@ -226,9 +209,7 @@ export default function StoreReviewPage() {
   const gstDoc = store.documents.find((d) => d.type === "gst");
   const bisDoc = store.documents.find((d) => d.type === "bis");
   const otherDocs = store.documents.filter((d) => d.type !== "gst" && d.type !== "bis");
-  const canReview =
-    store.canReview &&
-    isAwaitingAdminReview(store.verification_status, store.store_status);
+  const canReview = isPendingStoreStatus(store.store_status);
   const ownerDisplay =
     store.owner_name ??
     store.ownerProfile?.full_name ??
@@ -246,11 +227,11 @@ export default function StoreReviewPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-2">
           <Link
-            href={ROUTES.jewellerApprovals}
+            href={ROUTES.boutiques}
             className="inline-flex items-center gap-1 text-sm text-slate-600 hover:text-blue-600"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to approvals
+            Back to boutiques
           </Link>
           <div className="flex flex-wrap items-center gap-3">
             <ShieldCheck className="h-7 w-7 text-blue-600" />
@@ -405,38 +386,16 @@ export default function StoreReviewPage() {
               />
             </ReviewFieldGrid>
           </ReviewSection>
-
-          <ReviewSection title="GST details">
-            <ReviewFieldGrid>
-              <ReviewField label="GST certificate" value={gstDoc ? "Uploaded" : "Not uploaded"} />
-              <ReviewField label="GST / license number" value={gstDoc?.license_no} />
-              <ReviewField
-                label="Document status"
-                value={gstDoc?.status ? gstDoc.status : null}
-              />
-            </ReviewFieldGrid>
-          </ReviewSection>
-
-          <ReviewSection title="BIS details">
-            <ReviewFieldGrid>
-              <ReviewField label="BIS certificate" value={bisDoc ? "Uploaded" : "Not uploaded"} />
-              <ReviewField label="BIS / license number" value={bisDoc?.license_no} />
-              <ReviewField
-                label="Document status"
-                value={bisDoc?.status ? bisDoc.status : null}
-              />
-            </ReviewFieldGrid>
-          </ReviewSection>
         </Card>
       </div>
 
-      {/* Sticky actions */}
+      <BoutiqueProductsSection boutiqueId={store.id} />
+
       {canReview ? (
         <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/95 px-4 py-4 backdrop-blur lg:left-72">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-slate-500">
-              Review all documents before approving. Approval unlocks the Verify button on the
-              Boutiques page — verification badge and featuring are separate steps.
+              Review all documents before approving. Approval activates the store on the customer app.
             </p>
             <div className="flex gap-3">
               <Button variant="destructive" onClick={() => setShowReject(true)}>
@@ -458,16 +417,7 @@ export default function StoreReviewPage() {
             </div>
           </div>
         </div>
-      ) : (
-        <Card className="border-slate-200 p-4">
-          <p className="text-sm text-slate-600">
-            Document review is complete ({store.verification_status ?? store.store_status}).{" "}
-            <Link href={`/boutiques/${store.id}`} className="text-blue-600 hover:underline">
-              View boutique details
-            </Link>
-          </p>
-        </Card>
-      )}
+      ) : null}
 
       {showReject && store ? (
         <RejectDialog
@@ -475,7 +425,7 @@ export default function StoreReviewPage() {
           onClose={() => setShowReject(false)}
           onSuccess={() => {
             setShowReject(false);
-            router.push(ROUTES.jewellerApprovals);
+            router.push(ROUTES.boutiques);
           }}
         />
       ) : null}
