@@ -18,6 +18,9 @@ interface AnalyticsStatCardProps {
   growthPercent?: number | null;
   trendSeries?: AnalyticsSeriesPoint[];
   href?: string;
+  onClick?: () => void;
+  active?: boolean;
+  className?: string;
 }
 
 function MiniSparkline({ series }: { series?: AnalyticsSeriesPoint[] }) {
@@ -56,16 +59,21 @@ export function AnalyticsStatCard({
   growthPercent,
   trendSeries,
   href,
+  onClick,
+  active,
+  className,
 }: AnalyticsStatCardProps) {
   const hasGrowth = growthPercent != null && !Number.isNaN(growthPercent);
   const positive = (growthPercent ?? 0) >= 0;
+  const interactive = Boolean(href || onClick);
 
   const card = (
     <Card
       className={cn(
-        "premium-card-hover relative overflow-hidden",
-        highlight && "border-blue-300 bg-gradient-to-br from-blue-50 to-white",
-        href && "cursor-pointer transition-shadow hover:shadow-md",
+        "premium-card-hover relative flex h-full min-h-[136px] flex-col overflow-hidden",
+        highlight && !active && "border-blue-300 bg-gradient-to-br from-blue-50 to-white",
+        active && "border-blue-400 bg-gradient-to-br from-blue-50 to-white ring-2 ring-blue-500/40",
+        interactive && "cursor-pointer transition-shadow hover:shadow-md",
       )}
     >
         {highlight ? (
@@ -107,7 +115,7 @@ export function AnalyticsStatCard({
           <MiniSparkline series={trendSeries} />
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-4 flex min-h-[22px] flex-1 flex-wrap items-end gap-2">
           {hasGrowth ? (
             <span
               className={cn(
@@ -139,12 +147,24 @@ export function AnalyticsStatCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="premium-card-hover"
+      className={cn("premium-card-hover h-full min-w-0", className)}
     >
-      {href ? (
-        <Link href={href} className="block rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+      {href && !onClick ? (
+        <Link
+          href={href}
+          className="block h-full w-full rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
           {card}
         </Link>
+      ) : onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          aria-pressed={active}
+          className="block h-full w-full rounded-xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        >
+          {card}
+        </button>
       ) : (
         card
       )}

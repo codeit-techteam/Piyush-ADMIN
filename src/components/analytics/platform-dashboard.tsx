@@ -1,20 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Building2,
   CalendarClock,
   Clock,
-  Layers,
-  Package,
-  Users,
+  UserPlus,
 } from "lucide-react";
 import { AnalyticsAreaChart } from "@/components/analytics/analytics-area-chart";
 import { AnalyticsStatCard } from "@/components/analytics/analytics-stat-card";
+import {
+  PlatformStatDetailPanel,
+  type PlatformStatKey,
+} from "@/components/analytics/platform-stat-detail-panel";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
 import { computeSeriesGrowth } from "@/lib/analytics-insights";
-import { ROUTES } from "@/lib/constants/routes";
 import type { PlatformAnalytics } from "@/types/analytics";
 
 interface PlatformDashboardProps {
@@ -22,16 +23,13 @@ interface PlatformDashboardProps {
   isFetching?: boolean;
 }
 
-function formatCurrency(n: number) {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
-
 export function PlatformDashboard({ data }: PlatformDashboardProps) {
   const { cards, charts, sections } = data;
+  const [selectedStat, setSelectedStat] = useState<PlatformStatKey | null>(null);
+
+  const toggleStat = (key: PlatformStatKey) => {
+    setSelectedStat((current) => (current === key ? null : key));
+  };
 
   return (
     <AnimatePresence mode="wait">
@@ -43,39 +41,20 @@ export function PlatformDashboard({ data }: PlatformDashboardProps) {
         transition={{ duration: 0.3 }}
         className="space-y-8"
       >
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-          <AnalyticsStatCard
-            title="Total Users"
-            value={cards.totalUsers ?? 0}
-            highlight
-            icon={Users}
-            growthPercent={computeSeriesGrowth(charts.userGrowth).percent}
-            trendSeries={charts.userGrowth}
-          />
-          <AnalyticsStatCard
-            title="Total Boutiques"
-            value={cards.totalBoutiques ?? 0}
-            icon={Building2}
-            growthPercent={computeSeriesGrowth(charts.boutiqueApprovalTrends).percent}
-            trendSeries={charts.boutiqueApprovalTrends}
-          />
+        <section className="grid grid-cols-2 gap-4 xl:grid-cols-3 xl:items-stretch">
           <AnalyticsStatCard
             title="Pending Boutiques"
             value={cards.pendingBoutiques ?? 0}
             icon={Clock}
-            href={ROUTES.boutiquesWithTab("pending")}
           />
           <AnalyticsStatCard
-            title="Total Products"
-            value={cards.totalProducts ?? 0}
-            icon={Package}
-            growthPercent={computeSeriesGrowth(charts.productUploadTrends).percent}
-            trendSeries={charts.productUploadTrends}
-          />
-          <AnalyticsStatCard
-            title="Total Collections"
-            value={cards.totalCollections ?? 0}
-            icon={Layers}
+            title="New Users"
+            value={cards.newUsers ?? 0}
+            icon={UserPlus}
+            growthPercent={computeSeriesGrowth(charts.userGrowth).percent}
+            trendSeries={charts.userGrowth}
+            active={selectedStat === "newUsers"}
+            onClick={() => toggleStat("newUsers")}
           />
           <AnalyticsStatCard
             title="Total Appointments"
@@ -83,8 +62,27 @@ export function PlatformDashboard({ data }: PlatformDashboardProps) {
             icon={CalendarClock}
             growthPercent={computeSeriesGrowth(charts.appointmentTrends).percent}
             trendSeries={charts.appointmentTrends}
+            active={selectedStat === "appointments"}
+            onClick={() => toggleStat("appointments")}
           />
         </section>
+
+        <AnimatePresence>
+          {selectedStat ? (
+            <motion.section
+              key={selectedStat}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25 }}
+              className="overflow-hidden"
+            >
+              <Card className="border-blue-100 bg-gradient-to-br from-blue-50/50 to-white p-5">
+                <PlatformStatDetailPanel statKey={selectedStat} data={data} />
+              </Card>
+            </motion.section>
+          ) : null}
+        </AnimatePresence>
 
         <section className="grid gap-4 lg:grid-cols-2">
           <AnalyticsAreaChart title="User Growth" data={charts.userGrowth ?? []} />
@@ -96,32 +94,18 @@ export function PlatformDashboard({ data }: PlatformDashboardProps) {
           <AnalyticsAreaChart title="Appointment Trends" data={charts.appointmentTrends ?? []} />
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-2">
+        <section>
           <Card>
             <h3 className="mb-4 text-sm font-semibold text-slate-800">Top Performing Boutiques</h3>
             <DataTable
               columns={[
                 { key: "name", header: "Boutique" },
                 { key: "appointments", header: "Appointments" },
-                { key: "revenue", header: "Revenue" },
+                { key: "location", header: "Location" },
               ]}
               data={(sections.topPerformingBoutiques ?? []).map((b) => ({
                 ...b,
-                revenue: formatCurrency(b.revenue),
-              }))}
-              bare
-            />
-          </Card>
-          <Card>
-            <h3 className="mb-4 text-sm font-semibold text-slate-800">Recent Activities</h3>
-            <DataTable
-              columns={[
-                { key: "action", header: "Action" },
-                { key: "createdAt", header: "When" },
-              ]}
-              data={(sections.recentActivities ?? []).map((a) => ({
-                action: a.action,
-                createdAt: a.createdAt ? new Date(a.createdAt).toLocaleString() : "—",
+                location: b.location || "—",
               }))}
               bare
             />

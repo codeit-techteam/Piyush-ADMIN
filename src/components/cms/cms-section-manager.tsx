@@ -1,6 +1,23 @@
 "use client";
 
-import { useMemo, useState, type DragEvent, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import {
   Eye,
@@ -19,7 +36,6 @@ import { CmsImageUpload } from "@/components/cms/cms-image-upload";
 import { CmsProductPicker } from "@/components/cms/cms-product-picker";
 import { useCmsList, useCmsMutations } from "@/hooks/use-cms";
 import { getCmsItem, type CmsBase, type CmsPayload } from "@/lib/api/services/cms";
-import { cn } from "@/lib/utils";
 
 export interface CmsFieldConfig<T extends CmsBase = CmsBase> {
   key: keyof T | string;
@@ -67,6 +83,102 @@ function inputValue(value: unknown): string {
   return String(value);
 }
 
+interface SortableTableRowProps<T extends CmsBase> {
+  row: T;
+  listColumns: CmsSectionManagerProps<T>["listColumns"];
+  rowTitle: (row: T) => string;
+  onToggleActive: (row: T) => void;
+  onEdit: (row: T) => void;
+  onDelete: (row: T) => void;
+}
+
+function SortableTableRow<T extends CmsBase>({
+  row,
+  listColumns,
+  rowTitle,
+  onToggleActive,
+  onEdit,
+  onDelete,
+}: SortableTableRowProps<T>) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: row.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className="border-b border-slate-200/80 hover:bg-slate-50"
+    >
+      <td className="px-3 py-3 text-slate-500">
+        <button
+          type="button"
+          className="cursor-grab touch-none rounded p-1 hover:bg-slate-100 active:cursor-grabbing"
+          aria-label={`Drag to reorder ${rowTitle(row)}`}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </td>
+      {listColumns.map((column) => (
+        <td
+          key={column.key}
+          className="px-3 py-3 text-slate-800 align-middle"
+        >
+          {column.render
+            ? column.render(row)
+            : inputValue((row as Record<string, unknown>)[column.key])}
+        </td>
+      ))}
+      <td className="px-3 py-3 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => void onToggleActive(row)}
+            title={row.is_active ? "Hide on app" : "Show on app"}
+          >
+            {row.is_active ? (
+              <Eye className="h-4 w-4 text-emerald-700" />
+            ) : (
+              <EyeOff className="h-4 w-4 text-slate-500" />
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => void onEdit(row)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => void onDelete(row)}
+          >
+            <Trash2 className="h-4 w-4 text-red-400" />
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export function CmsSectionManager<T extends CmsBase = CmsBase>({
   section,
   title,
@@ -87,12 +199,24 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
   const [draft, setDraft] = useState<CmsPayload>({});
   const [productIds, setProductIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
     [items],
+  );
+
+  const sortableIds = useMemo(
+    () => sortedItems.map((item) => item.id),
+    [sortedItems],
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   function openCreate() {
@@ -180,50 +304,20 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
     }
   }
 
-  async function onReorderRows(fromId: string, toId: string) {
-    if (fromId === toId) return;
-    const fromIndex = sortedItems.findIndex((entry) => entry.id === fromId);
-    const toIndex = sortedItems.findIndex((entry) => entry.id === toId);
-    if (fromIndex < 0 || toIndex < 0) return;
+  async function onDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-    const next = [...sortedItems];
-    const [moved] = next.splice(fromIndex, 1);
-    next.splice(toIndex, 0, moved);
+    const oldIndex = sortedItems.findIndex((entry) => entry.id === active.id);
+    const newIndex = sortedItems.findIndex((entry) => entry.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
 
+    const next = arrayMove(sortedItems, oldIndex, newIndex);
     try {
       await reorder.mutateAsync(next.map((item) => ({ id: item.id })));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Reorder failed");
     }
-  }
-
-  function handleDragStart(event: DragEvent<HTMLTableRowElement>, rowId: string) {
-    setDraggedId(rowId);
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", rowId);
-  }
-
-  function handleDragOver(event: DragEvent<HTMLTableRowElement>, rowId: string) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    if (dragOverId !== rowId) {
-      setDragOverId(rowId);
-    }
-  }
-
-  function handleDrop(event: DragEvent<HTMLTableRowElement>, rowId: string) {
-    event.preventDefault();
-    const sourceId = draggedId ?? event.dataTransfer.getData("text/plain");
-    if (sourceId) {
-      void onReorderRows(sourceId, rowId);
-    }
-    setDraggedId(null);
-    setDragOverId(null);
-  }
-
-  function handleDragEnd() {
-    setDraggedId(null);
-    setDragOverId(null);
   }
 
   if (isLoading) {
@@ -249,104 +343,58 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
       </header>
 
       <Card className="overflow-x-auto p-0">
-        <table className="admin-table min-w-[760px]">
-          <thead>
-            <tr>
-              <th className="w-12 px-3 py-3"></th>
-              {listColumns.map((column) => (
-                <th
-                  key={column.key}
-                  className="px-3 py-3 font-medium text-slate-700"
-                >
-                  {column.header}
-                </th>
-              ))}
-              <th className="w-32 px-3 py-3 text-right font-medium text-slate-700">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedItems.map((row) => (
-              <tr
-                key={row.id}
-                draggable
-                onDragStart={(event) => handleDragStart(event, row.id)}
-                onDragOver={(event) => handleDragOver(event, row.id)}
-                onDrop={(event) => handleDrop(event, row.id)}
-                onDragEnd={handleDragEnd}
-                className={cn(
-                  "border-b border-slate-200/80 hover:bg-slate-50",
-                  draggedId === row.id && "opacity-50",
-                  dragOverId === row.id &&
-                    draggedId &&
-                    draggedId !== row.id &&
-                    "bg-blue-50 ring-2 ring-inset ring-blue-200",
-                )}
-              >
-                <td className="cursor-grab px-3 py-3 text-slate-500 active:cursor-grabbing">
-                  <GripVertical className="h-4 w-4" aria-hidden />
-                  <span className="sr-only">Drag to reorder</span>
-                </td>
-                {listColumns.map((column) => (
-                  <td
-                    key={column.key}
-                    className="px-3 py-3 text-slate-800 align-middle"
-                  >
-                    {column.render
-                      ? column.render(row)
-                      : inputValue(
-                          (row as Record<string, unknown>)[column.key],
-                        )}
-                  </td>
-                ))}
-                <td className="px-3 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void onToggleActive(row)}
-                      title={row.is_active ? "Hide on app" : "Show on app"}
-                    >
-                      {row.is_active ? (
-                        <Eye className="h-4 w-4 text-emerald-700" />
-                      ) : (
-                        <EyeOff className="h-4 w-4 text-slate-500" />
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void openEdit(row)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void onDelete(row)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-400" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {sortedItems.length === 0 ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event) => void onDragEnd(event)}
+        >
+          <table className="admin-table min-w-[760px]">
+            <thead>
               <tr>
-                <td
-                  colSpan={listColumns.length + 2}
-                  className="px-3 py-8 text-center text-sm text-slate-500"
-                >
-                  No entries yet. Click “Add new” to create the first one.
-                </td>
+                <th className="w-12 px-3 py-3" aria-label="Reorder" />
+                {listColumns.map((column) => (
+                  <th
+                    key={column.key}
+                    className="px-3 py-3 font-medium text-slate-700"
+                  >
+                    {column.header}
+                  </th>
+                ))}
+                <th className="w-32 px-3 py-3 text-right font-medium text-slate-700">
+                  Actions
+                </th>
               </tr>
-            ) : null}
-          </tbody>
-        </table>
+            </thead>
+            <SortableContext
+              items={sortableIds}
+              strategy={verticalListSortingStrategy}
+            >
+              <tbody>
+                {sortedItems.map((row) => (
+                  <SortableTableRow
+                    key={row.id}
+                    row={row}
+                    listColumns={listColumns}
+                    rowTitle={rowTitle}
+                    onToggleActive={(entry) => void onToggleActive(entry)}
+                    onEdit={(entry) => void openEdit(entry)}
+                    onDelete={(entry) => void onDelete(entry)}
+                  />
+                ))}
+                {sortedItems.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={listColumns.length + 2}
+                      className="px-3 py-8 text-center text-sm text-slate-500"
+                    >
+                      No entries yet. Click “Add new” to create the first one.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </SortableContext>
+          </table>
+        </DndContext>
       </Card>
 
       {(creating || editing) ? (
