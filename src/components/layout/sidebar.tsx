@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { sidebarNav } from "@/lib/constants/navigation";
 import { listBoutiques } from "@/lib/api/services/boutiques";
-import { isAwaitingAdminReview } from "@/lib/jeweller-documents";
+import { pendingApprovalCount } from "@/lib/boutique-approval";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/common/logo";
 
@@ -19,9 +19,7 @@ function useJewellerPendingCount() {
     throwOnError: false,
   });
   if (!data) return 0;
-  return data.filter(
-    (b) => b.is_self_managed && isAwaitingAdminReview(b.verification_status, b.store_status),
-  ).length;
+  return pendingApprovalCount(data);
 }
 
 export function Sidebar() {

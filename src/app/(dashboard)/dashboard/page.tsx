@@ -6,7 +6,6 @@ import dynamic from "next/dynamic";
 import { AnalyticsSkeleton } from "@/components/analytics/analytics-skeleton";
 import { DashboardSwitcher } from "@/components/analytics/dashboard-switcher";
 import { DateRangeFilter } from "@/components/analytics/date-range-filter";
-import { ExportToolbar } from "@/components/analytics/export-toolbar";
 import { PageHeader } from "@/components/layout/page-header";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/feedback/empty-state";
@@ -84,7 +83,6 @@ export default function DashboardPage() {
       <PageHeader
         title="Admin Dashboard"
         subtitle="Real-time business intelligence and platform analytics."
-        actions={<ExportToolbar layer={layer} query={dateQuery} />}
       />
 
       <DashboardSwitcher active={layer} onChange={setLayer} />

@@ -14,6 +14,7 @@ import { AnalyticsStatCard } from "@/components/analytics/analytics-stat-card";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/tables/data-table";
 import { computeSeriesGrowth } from "@/lib/analytics-insights";
+import { ROUTES } from "@/lib/constants/routes";
 import type { PlatformAnalytics } from "@/types/analytics";
 
 interface PlatformDashboardProps {
@@ -62,7 +63,7 @@ export function PlatformDashboard({ data }: PlatformDashboardProps) {
             title="Pending Boutiques"
             value={cards.pendingBoutiques ?? 0}
             icon={Clock}
-            subText="Awaiting review"
+            href={ROUTES.boutiquesWithTab("pending")}
           />
           <AnalyticsStatCard
             title="Total Products"

@@ -3,6 +3,7 @@ import type {
   ApiResponse,
   Boutique,
   BoutiqueDetails,
+  BoutiqueProductSummary,
   PatchBoutiqueAdminPayload,
   UpdateBoutiquePayload,
 } from "@/types";
@@ -176,11 +177,133 @@ export async function patchBoutiqueAdmin(id: string, payload: PatchBoutiqueAdmin
   return data.data;
 }
 
+export async function listBoutiqueProducts(id: string, includeAll = true) {
+  const params = new URLSearchParams({
+    includeAll: includeAll ? "true" : "false",
+  });
+  const res = await fetch(`/api/admin/boutiques/${id}/products?${params.toString()}`);
+  const json = (await res.json()) as ApiResponse<BoutiqueProductSummary[]> & {
+    message?: string;
+  };
+  if (!res.ok) {
+    throw new Error(json.message ?? "Failed to load boutique products");
+  }
+  return json.data;
+}
+
 export async function deleteBoutique(id: string) {
   const { data } = await api.delete<ApiResponse<{ id: string; status: string; deleted_at: string }>>(
     `/boutiques/${id}`,
   );
   return data.data;
+}
+
+function toUpdatePayload(
+  boutique: BoutiqueDetails,
+  overrides: Partial<UpdateBoutiquePayload>,
+): UpdateBoutiquePayload {
+  const phone =
+    boutique.phone ??
+    boutique.phone_number ??
+    boutique.contact_number ??
+    "0000000000";
+
+  return {
+    name: boutique.name,
+    description: boutique.description ?? null,
+    address: boutique.address ?? null,
+    full_address: boutique.full_address ?? boutique.address ?? null,
+    phone,
+    phone_number: boutique.phone_number ?? boutique.contact_number ?? phone,
+    location: boutique.location ?? boutique.address ?? "",
+    rating: boutique.rating ?? 0,
+    image: boutique.image ?? null,
+    logo_url: boutique.logo_url ?? null,
+    banner_images: boutique.banner_images,
+    gallery_images: boutique.gallery_images,
+    verified: boutique.verified ?? boutique.is_verified ?? false,
+    is_verified: boutique.is_verified ?? boutique.verified ?? false,
+    featured: boutique.featured ?? boutique.is_featured ?? false,
+    status: boutique.status ?? "active",
+    is_active: boutique.is_active !== false,
+    contact_number: boutique.contact_number ?? phone,
+    whatsapp: boutique.whatsapp ?? boutique.whatsapp_number ?? "",
+    whatsapp_number: boutique.whatsapp_number ?? boutique.whatsapp ?? null,
+    instagram: boutique.instagram ?? boutique.instagram_url ?? "",
+    instagram_url: boutique.instagram_url ?? boutique.instagram ?? null,
+    website_url: boutique.website_url ?? null,
+    opening_hours: boutique.opening_hours ?? null,
+    opening_time: boutique.opening_time ?? null,
+    closing_time: boutique.closing_time ?? null,
+    working_days: boutique.working_days,
+    store_status: boutique.store_status ?? undefined,
+    is_onboarding_done: boutique.is_onboarding_done,
+    ...overrides,
+  };
+}
+
+export async function approveBoutiqueStore(id: string) {
+  const boutique = await getBoutiqueDetails(id);
+  return updateBoutique(
+    id,
+    toUpdatePayload(boutique, {
+      store_status: "approved",
+      is_onboarding_done: true,
+      is_active: true,
+      status: "active",
+      verified: true,
+      is_verified: true,
+    }),
+  );
+}
+
+export async function rejectBoutiqueStore(id: string) {
+  const boutique = await getBoutiqueDetails(id);
+  return updateBoutique(
+    id,
+    toUpdatePayload(boutique, {
+      store_status: "rejected",
+    }),
+  );
+}
+
+export async function suspendBoutiqueStore(id: string) {
+  const boutique = await getBoutiqueDetails(id);
+  return updateBoutique(
+    id,
+    toUpdatePayload(boutique, {
+      is_active: false,
+      status: "inactive",
+    }),
+  );
+}
+
+export async function rereviewBoutiqueStore(id: string) {
+  const boutique = await getBoutiqueDetails(id);
+  return updateBoutique(
+    id,
+    toUpdatePayload(boutique, {
+      store_status: "review",
+    }),
+  );
+}
+
+export async function notifyBoutiqueJeweller(
+  payload: {
+    jeweller_user_id: string;
+    boutique_id: string;
+    event: "approved" | "rejected";
+    reason?: string;
+  },
+) {
+  const notifyRes = await fetch("/api/admin/boutique-notify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!notifyRes.ok) {
+    console.warn("[boutiques] notification insert failed (non-fatal)");
+  }
 }
 
 export type BoutiqueImageUploadKind = "cover" | "logo" | "gallery";
