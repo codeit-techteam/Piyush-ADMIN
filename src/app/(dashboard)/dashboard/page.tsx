@@ -62,9 +62,12 @@ export default function DashboardPage() {
     return q;
   }, [preset, customFrom, customTo, layer, boutiqueId]);
 
-  const platform = usePlatformAnalytics(dateQuery, layer === "platform");
-  const boutique = useBoutiqueAnalytics({ ...dateQuery, boutiqueId }, layer === "boutique");
-  const customer = useCustomerAnalytics(dateQuery, layer === "customer");
+  const platform = usePlatformAnalytics(dateQuery, true);
+  const boutique = useBoutiqueAnalytics(
+    { ...dateQuery, boutiqueId },
+    Boolean(boutiqueId),
+  );
+  const customer = useCustomerAnalytics(dateQuery, true);
   const boutiquesList = useAnalyticsBoutiques();
 
   const activeQuery =

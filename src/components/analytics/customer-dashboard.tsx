@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { AnalyticsAreaChart } from "@/components/analytics/analytics-area-chart";
 import { AnalyticsStatCard } from "@/components/analytics/analytics-stat-card";
 import { RankedList } from "@/components/analytics/ranked-list";
+import { ROUTES } from "@/lib/constants/routes";
 import type { CustomerAnalytics } from "@/types/analytics";
 
 interface CustomerDashboardProps {
@@ -25,7 +26,7 @@ export function CustomerDashboard({ data }: CustomerDashboardProps) {
       >
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <AnalyticsStatCard title="Total Customers" value={cards.totalCustomers ?? 0} highlight />
-          <AnalyticsStatCard title="New Users" value={cards.newUsers ?? 0} />
+          <AnalyticsStatCard title="New Users" value={cards.newUsers ?? 0} href={ROUTES.users} />
           <AnalyticsStatCard title="Wishlist Activity" value={cards.wishlistActivity ?? 0} />
         </section>
 

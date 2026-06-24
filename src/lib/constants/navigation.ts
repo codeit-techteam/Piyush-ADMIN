@@ -1,12 +1,9 @@
 import {
   Bell,
   CalendarClock,
-  Gift,
   Headphones,
   MessageCircle,
-  HeartHandshake,
   LayoutDashboard,
-  Menu as MenuIcon,
   Building2,
   Package,
   Sparkles,
@@ -29,13 +26,6 @@ export const sidebarNav: NavItem[] = [
   { title: "Products", href: ROUTES.products, icon: Package },
   { title: "Collections", href: ROUTES.collections, icon: Sparkles },
   { title: "Occasions", href: ROUTES.occasions, icon: CalendarClock },
-  { title: "Menu (Shop For)", href: ROUTES.menu, icon: MenuIcon },
-  { title: "Gifts", href: ROUTES.gifts, icon: Gift },
-  {
-    title: "Shop by relationship",
-    href: ROUTES.relationshipSections,
-    icon: HeartHandshake,
-  },
   {
     title: "Boutiques",
     href: ROUTES.boutiques,
