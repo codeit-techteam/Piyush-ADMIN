@@ -2,12 +2,9 @@
 
 import { format, parseISO } from "date-fns";
 import { motion } from "framer-motion";
-import { TrendingDown, TrendingUp } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Card } from "@/components/ui/card";
-import { computeSeriesGrowth } from "@/lib/analytics-insights";
 import type { AnalyticsSeriesPoint } from "@/types/analytics";
-import { cn } from "@/lib/utils";
 
 interface AnalyticsAreaChartProps {
   title: string;
@@ -69,27 +66,12 @@ export function AnalyticsAreaChart({
     value: p.value,
   }));
   const gradientId = `fillBlue-${title.replace(/\s/g, "")}`;
-  const insight = computeSeriesGrowth(data);
-  const positive = (insight.percent ?? 0) >= 0;
   const yLabelWidth = Math.min(48, Math.max(28, resolvedYAxisLabel.length * 5.5));
 
   return (
     <Card className="premium-card-hover overflow-hidden">
-      <div className="mb-4 flex items-start justify-between gap-2">
+      <div className="mb-4">
         <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
-        {insight.percent != null ? (
-          <span
-            className={cn(
-              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
-              positive
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-red-200 bg-red-50 text-red-700",
-            )}
-          >
-            {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {title.split(" ")[0]} {positive ? "↑" : "↓"} {Math.abs(insight.percent)}%
-          </span>
-        ) : null}
       </div>
       {chartData.length === 0 ? (
         <p className="flex h-56 items-center justify-center text-sm text-slate-500">{emptyLabel}</p>
@@ -183,15 +165,6 @@ export function AnalyticsAreaChart({
           </p>
         </div>
       )}
-      {insight.percent != null && chartData.length > 0 ? (
-        <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500">
-          <span className="text-slate-600">Insight:</span>{" "}
-          <span className={positive ? "text-emerald-600" : "text-red-600"}>
-            {positive ? "Growing" : "Declining"}
-          </span>{" "}
-          {Math.abs(insight.percent)}% {insight.label}
-        </p>
-      ) : null}
     </Card>
   );
 }

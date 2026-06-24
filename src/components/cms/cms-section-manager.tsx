@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   DndContext,
   KeyboardSensor,
@@ -62,6 +62,10 @@ export interface CmsSectionManagerProps<T extends CmsBase = CmsBase> {
   formFields: CmsFieldConfig<T>[];
   /** Whether to render the "Attached products" picker. */
   showProductPicker?: boolean;
+  /** Show "Visible on app" toggle in the editor (table eye icon still works). */
+  showActiveInForm?: boolean;
+  /** Show manual sort-order input in the editor. */
+  showSortOrderInForm?: boolean;
   /** Initial draft when creating a new item. */
   defaultDraft?: CmsPayload;
   /** Optional title transformer for the list row (defaults to title || name). */
@@ -187,6 +191,8 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
   listColumns,
   formFields,
   showProductPicker = true,
+  showActiveInForm = true,
+  showSortOrderInForm = true,
   defaultDraft,
   rowTitle = defaultRowTitle,
 }: CmsSectionManagerProps<T>) {
@@ -199,6 +205,13 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
   const [draft, setDraft] = useState<CmsPayload>({});
   const [productIds, setProductIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (creating || editing) {
+      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [creating, editing]);
 
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
@@ -342,62 +355,8 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
         </Button>
       </header>
 
-      <Card className="overflow-x-auto p-0">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={(event) => void onDragEnd(event)}
-        >
-          <table className="admin-table min-w-[760px]">
-            <thead>
-              <tr>
-                <th className="w-12 px-3 py-3" aria-label="Reorder" />
-                {listColumns.map((column) => (
-                  <th
-                    key={column.key}
-                    className="px-3 py-3 font-medium text-slate-700"
-                  >
-                    {column.header}
-                  </th>
-                ))}
-                <th className="w-32 px-3 py-3 text-right font-medium text-slate-700">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <SortableContext
-              items={sortableIds}
-              strategy={verticalListSortingStrategy}
-            >
-              <tbody>
-                {sortedItems.map((row) => (
-                  <SortableTableRow
-                    key={row.id}
-                    row={row}
-                    listColumns={listColumns}
-                    rowTitle={rowTitle}
-                    onToggleActive={(entry) => void onToggleActive(entry)}
-                    onEdit={(entry) => void openEdit(entry)}
-                    onDelete={(entry) => void onDelete(entry)}
-                  />
-                ))}
-                {sortedItems.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan={listColumns.length + 2}
-                      className="px-3 py-8 text-center text-sm text-slate-500"
-                    >
-                      No entries yet. Click “Add new” to create the first one.
-                    </td>
-                  </tr>
-                ) : null}
-              </tbody>
-            </SortableContext>
-          </table>
-        </DndContext>
-      </Card>
-
       {(creating || editing) ? (
+        <div ref={editorRef} className="scroll-mt-4">
         <Card className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">
@@ -425,8 +384,6 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
                       onChange={(url) => {
                         const next = url || null;
                         updateDraft(String(field.key), next);
-                        // Categories keep a legacy `category_image_url` column; sync it
-                        // when admins upload to the `image` field so saves don't ignore CMS uploads.
                         if (String(field.key) === "image") {
                           updateDraft("category_image_url", next);
                         }
@@ -551,32 +508,38 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
             })}
           </div>
 
-          <div className="rounded-md border border-slate-200 bg-white/40 p-3">
-            <label className="flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
-                checked={
-                  (draft.is_active as boolean | undefined) ?? true
-                }
-                onChange={(event) =>
-                  updateDraft("is_active", event.target.checked)
-                }
-              />
-              Visible on app (active)
-            </label>
-            <div className="mt-3">
-              <label className="mb-1 block text-sm text-slate-700">
-                Sort order
-              </label>
-              <Input
-                type="number"
-                value={inputValue(draft.sort_order ?? 0)}
-                onChange={(event) =>
-                  updateDraft("sort_order", Number(event.target.value || 0))
-                }
-              />
+          {showActiveInForm || showSortOrderInForm ? (
+            <div className="rounded-md border border-slate-200 bg-white/40 p-3">
+              {showActiveInForm ? (
+                <label className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={
+                      (draft.is_active as boolean | undefined) ?? true
+                    }
+                    onChange={(event) =>
+                      updateDraft("is_active", event.target.checked)
+                    }
+                  />
+                  Visible on app (active)
+                </label>
+              ) : null}
+              {showSortOrderInForm ? (
+                <div className={showActiveInForm ? "mt-3" : undefined}>
+                  <label className="mb-1 block text-sm text-slate-700">
+                    Sort order
+                  </label>
+                  <Input
+                    type="number"
+                    value={inputValue(draft.sort_order ?? 0)}
+                    onChange={(event) =>
+                      updateDraft("sort_order", Number(event.target.value || 0))
+                    }
+                  />
+                </div>
+              ) : null}
             </div>
-          </div>
+          ) : null}
 
           {showProductPicker ? (
             <CmsProductPicker value={productIds} onChange={setProductIds} />
@@ -591,7 +554,63 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
             </Button>
           </div>
         </Card>
+        </div>
       ) : null}
+
+      <Card className="overflow-x-auto p-0">
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event) => void onDragEnd(event)}
+        >
+          <table className="admin-table min-w-[760px]">
+            <thead>
+              <tr>
+                <th className="w-12 px-3 py-3" aria-label="Reorder" />
+                {listColumns.map((column) => (
+                  <th
+                    key={column.key}
+                    className="px-3 py-3 font-medium text-slate-700"
+                  >
+                    {column.header}
+                  </th>
+                ))}
+                <th className="w-32 px-3 py-3 text-right font-medium text-slate-700">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <SortableContext
+              items={sortableIds}
+              strategy={verticalListSortingStrategy}
+            >
+              <tbody>
+                {sortedItems.map((row) => (
+                  <SortableTableRow
+                    key={row.id}
+                    row={row}
+                    listColumns={listColumns}
+                    rowTitle={rowTitle}
+                    onToggleActive={(entry) => void onToggleActive(entry)}
+                    onEdit={(entry) => void openEdit(entry)}
+                    onDelete={(entry) => void onDelete(entry)}
+                  />
+                ))}
+                {sortedItems.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={listColumns.length + 2}
+                      className="px-3 py-8 text-center text-sm text-slate-500"
+                    >
+                      No entries yet. Click “Add new” to create the first one.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </SortableContext>
+          </table>
+        </DndContext>
+      </Card>
     </div>
   );
 }

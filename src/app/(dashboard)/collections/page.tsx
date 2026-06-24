@@ -12,7 +12,6 @@ export default function CollectionsPage() {
       imageFolder="collections"
       formFields={[
         { key: "title", label: "Collection title", placeholder: "Wedding Collection" },
-        { key: "slug", label: "Slug", helper: "Used in deep links and URLs" },
         { key: "subtitle", label: "Subtitle", placeholder: "Short hook (optional)" },
         {
           key: "description",
@@ -28,17 +27,9 @@ export default function CollectionsPage() {
           imageFolder: "collections",
           helper: "Wide hero banner used inside the collection detail screen",
         },
-        {
-          key: "is_trending",
-          label: "Show in “Trending Collections”",
-          type: "boolean",
-        },
-        {
-          key: "is_featured",
-          label: "Show in featured carousels",
-          type: "boolean",
-        },
       ]}
+      showActiveInForm={false}
+      showSortOrderInForm={false}
       listColumns={[
         {
           key: "image",
@@ -56,16 +47,6 @@ export default function CollectionsPage() {
             ),
         },
         { key: "title", header: "Title" },
-        {
-          key: "is_trending",
-          header: "Trending",
-          render: (row) => (row.is_trending ? "Yes" : "—"),
-        },
-        {
-          key: "is_featured",
-          header: "Featured",
-          render: (row) => (row.is_featured ? "Yes" : "—"),
-        },
       ]}
     />
   );

@@ -27,6 +27,40 @@ export interface MarketplaceUser {
   phone: string | null;
   profile_image: string | null;
   created_at: string | null;
+  email?: string | null;
+  appointments_count?: number;
+  is_terminated?: boolean;
+}
+
+export interface UserWishlistItem {
+  id: string;
+  product_id: string;
+  created_at: string | null;
+  product: {
+    id: string;
+    name: string;
+    price: number;
+    image: string | null;
+  } | null;
+}
+
+export interface UserAppointmentSummary {
+  id: string;
+  boutique_id: string | null;
+  boutique_name: string | null;
+  date: string | null;
+  time: string | null;
+  type: string | null;
+  status: string | null;
+  starts_at: string | null;
+  created_at: string | null;
+  notes: string | null;
+}
+
+export interface UserDetails extends MarketplaceUser {
+  email: string | null;
+  appointments: UserAppointmentSummary[];
+  wishlist: UserWishlistItem[];
 }
 
 export interface ProductSpecifications {

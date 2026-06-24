@@ -44,10 +44,10 @@ export function BoutiqueDashboard({ data, isFetching }: BoutiqueDashboardProps) 
         className="space-y-6"
       >
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-          <AnalyticsStatCard title="Boutique Visit" value={cards.profileVisits} highlight />
-          <AnalyticsStatCard title="Total Products" value={cards.totalProducts} />
+          <AnalyticsStatCard title="Boutique Views" value={cards.profileVisits} highlight />
+          <AnalyticsStatCard title="Total Products" value={cards.totalProducts} href={ROUTES.products} />
           <AnalyticsStatCard title="Wishlist Saves" value={cards.totalWishlistSaves} />
-          <AnalyticsStatCard title="Appointments" value={cards.appointmentBookings} />
+          <AnalyticsStatCard title="Appointments" value={cards.appointmentBookings} href={ROUTES.appointments} />
           <AnalyticsStatCard
             title="Calls / WhatsApp"
             value={`${cards.callClicks} / ${cards.whatsappClicks}`}

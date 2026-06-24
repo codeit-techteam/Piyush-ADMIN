@@ -47,16 +47,6 @@ export function CmsProductPicker({ value, onChange }: CmsProductPickerProps) {
     }
   }
 
-  function move(id: string, direction: -1 | 1) {
-    const index = value.indexOf(id);
-    if (index < 0) return;
-    const next = [...value];
-    const swapIndex = index + direction;
-    if (swapIndex < 0 || swapIndex >= next.length) return;
-    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
-    onChange(next);
-  }
-
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
@@ -70,7 +60,7 @@ export function CmsProductPicker({ value, onChange }: CmsProductPickerProps) {
 
       {selectedList.length > 0 ? (
         <ul className="space-y-2">
-          {selectedList.map((product, index) => (
+          {selectedList.map((product) => (
             <li
               key={product.id}
               className="flex items-center gap-2 rounded-md border border-slate-200 bg-white/40 p-2"
@@ -92,24 +82,6 @@ export function CmsProductPicker({ value, onChange }: CmsProductPickerProps) {
                   {Number(product.price ?? 0).toLocaleString("en-IN")}
                 </p>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={index === 0}
-                onClick={() => move(product.id, -1)}
-              >
-                ↑
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={index === selectedList.length - 1}
-                onClick={() => move(product.id, 1)}
-              >
-                ↓
-              </Button>
               <Button
                 type="button"
                 size="sm"

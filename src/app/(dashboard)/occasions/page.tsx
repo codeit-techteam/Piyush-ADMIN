@@ -8,7 +8,7 @@ export default function OccasionsPage() {
     <CmsSectionManager<OccasionRow>
       section="occasions"
       title="Shop by Occasion"
-      description="Manage the occasion cards that appear on the home screen. Drag the arrows to change the display order on the app."
+      description="Manage the occasion cards that appear on the home screen. Drag rows to change the display order on the app."
       imageFolder="occasions"
       formFields={[
         {

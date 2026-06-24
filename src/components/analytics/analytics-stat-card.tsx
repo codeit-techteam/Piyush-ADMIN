@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
-import { TrendingDown, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { sparklinePoints } from "@/lib/analytics-insights";
 import type { AnalyticsSeriesPoint } from "@/types/analytics";
@@ -15,7 +14,6 @@ interface AnalyticsStatCardProps {
   subText?: string;
   highlight?: boolean;
   icon?: LucideIcon;
-  growthPercent?: number | null;
   trendSeries?: AnalyticsSeriesPoint[];
   href?: string;
   onClick?: () => void;
@@ -56,15 +54,12 @@ export function AnalyticsStatCard({
   subText,
   highlight,
   icon: Icon,
-  growthPercent,
   trendSeries,
   href,
   onClick,
   active,
   className,
 }: AnalyticsStatCardProps) {
-  const hasGrowth = growthPercent != null && !Number.isNaN(growthPercent);
-  const positive = (growthPercent ?? 0) >= 0;
   const interactive = Boolean(href || onClick);
 
   const card = (
@@ -115,30 +110,11 @@ export function AnalyticsStatCard({
           <MiniSparkline series={trendSeries} />
         </div>
 
-        <div className="mt-4 flex min-h-[22px] flex-1 flex-wrap items-end gap-2">
-          {hasGrowth ? (
-            <span
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
-                positive
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-red-200 bg-red-50 text-red-700",
-              )}
-            >
-              {positive ? (
-                <TrendingUp className="h-3 w-3" />
-              ) : (
-                <TrendingDown className="h-3 w-3" />
-              )}
-              {positive ? "+" : ""}
-              {growthPercent}%
-            </span>
-          ) : null}
-          {subText ? <span className="text-xs text-slate-500">{subText}</span> : null}
-          {!subText && hasGrowth ? (
-            <span className="text-xs text-slate-500">This period</span>
-          ) : null}
-        </div>
+        {subText ? (
+          <div className="mt-4 flex min-h-[22px] flex-1 flex-wrap items-end gap-2">
+            <span className="text-xs text-slate-500">{subText}</span>
+          </div>
+        ) : null}
       </Card>
   );
 

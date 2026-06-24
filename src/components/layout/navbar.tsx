@@ -14,14 +14,11 @@ export function Navbar() {
   const router = useRouter();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [now, setNow] = useState(() => new Date());
-  const [lastSync, setLastSync] = useState(() => new Date());
 
   useEffect(() => {
     const tick = setInterval(() => setNow(new Date()), 60_000);
-    const syncTick = setInterval(() => setLastSync(new Date()), 30_000);
     return () => {
       clearInterval(tick);
-      clearInterval(syncTick);
     };
   }, []);
 
@@ -33,7 +30,6 @@ export function Navbar() {
   };
 
   const dateLabel = format(now, "EEE, MMM d, yyyy");
-  const syncLabel = format(lastSync, "h:mm a");
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur-xl">
@@ -42,16 +38,8 @@ export function Navbar() {
           <Breadcrumbs />
         </div>
 
-        <div className="hidden items-center gap-4 text-xs text-slate-500 xl:flex">
+        <div className="hidden items-center text-xs text-slate-500 xl:flex">
           <span className="tabular-nums text-slate-600">{dateLabel}</span>
-          <span className="h-3 w-px bg-slate-200" aria-hidden />
-          <span className="flex items-center gap-1.5 text-slate-600">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-40" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-            </span>
-            Synced {syncLabel}
-          </span>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
