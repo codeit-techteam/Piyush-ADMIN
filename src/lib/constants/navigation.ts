@@ -42,7 +42,7 @@ export const sidebarNav: NavItem[] = [
     icon: Building2,
     badgeKey: "jeweller_pending",
   },
-  { title: "Users", href: ROUTES.users, icon: Users },
+  { title: "Customers", href: ROUTES.users, icon: Users },
   { title: "Notification Management", href: ROUTES.notifications, icon: Bell },
   { title: "Appointments", href: ROUTES.appointments, icon: CalendarClock },
   { title: "Support Center", href: ROUTES.supportCenter, icon: MessageCircle },

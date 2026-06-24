@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CalendarClock, ChevronLeft, ChevronRight, RefreshCw, Search } from "lucide-react";
 import { useAppointments } from "@/hooks/use-appointments";
 import { useBoutiques } from "@/hooks/use-boutiques";
+import { activeBoutiques, isApprovedStoreStatus } from "@/lib/boutique-approval";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -148,6 +149,14 @@ export default function AppointmentsPage() {
   const allRows = appointmentsQuery.data ?? [];
   const boutiques = boutiquesQuery.data ?? [];
 
+  const approvedBoutiques = useMemo(
+    () =>
+      activeBoutiques(boutiques)
+        .filter((b) => isApprovedStoreStatus(b.store_status))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [boutiques],
+  );
+
   const filteredRows = useMemo(
     () => allRows.filter((row) => matchesSearch(row, search)),
     [allRows, search],
@@ -281,7 +290,7 @@ export default function AppointmentsPage() {
             }}
           >
             <option value="">All boutiques</option>
-            {boutiques.map((b) => (
+            {approvedBoutiques.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}
               </option>

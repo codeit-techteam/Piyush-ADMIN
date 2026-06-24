@@ -29,10 +29,10 @@ import { ErrorState } from "@/components/feedback/error-state";
 import type { Boutique } from "@/types";
 
 const TAB_LABELS: { key: ApprovalTab; label: string }[] = [
-  { key: "pending", label: "Pending Review" },
-  { key: "approved", label: "Approved" },
-  { key: "rejected", label: "Rejected" },
   { key: "all", label: "All" },
+  { key: "approved", label: "Approved" },
+  { key: "pending", label: "Pending" },
+  { key: "rejected", label: "Rejected" },
 ];
 
 const VALID_TABS = new Set<ApprovalTab>(TAB_LABELS.map(({ key }) => key));
@@ -41,7 +41,7 @@ function parseTabParam(value: string | null): ApprovalTab {
   if (value && VALID_TABS.has(value as ApprovalTab)) {
     return value as ApprovalTab;
   }
-  return "pending";
+  return "all";
 }
 
 function StoreActions({

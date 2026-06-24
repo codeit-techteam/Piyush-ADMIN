@@ -34,6 +34,7 @@ export function useSendNotification() {
     mutationFn: (payload: SendNotificationPayload) => sendNotification(payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["notification-stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-notifications-list"] });
     },
   });
 }

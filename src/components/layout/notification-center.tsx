@@ -2,16 +2,28 @@
 
 import Link from "next/link";
 import { Bell, ExternalLink } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAdminNotificationsList } from "@/hooks/use-notifications-admin";
 import { ROUTES } from "@/lib/constants/routes";
+import { useAdminNotificationsReadStore } from "@/store/admin-notifications-read-store";
 import { cn } from "@/lib/utils";
+
+const LIST_LIMIT = 50;
 
 export function NotificationCenter() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
-  const { data: items = [] } = useAdminNotificationsList(8, 0);
-  const unread = items.length;
+  const { data: items = [] } = useAdminNotificationsList(LIST_LIMIT, 0);
+  const readIds = useAdminNotificationsReadStore((state) => state.readIds);
+  const markRead = useAdminNotificationsReadStore((state) => state.markRead);
+  const markAllRead = useAdminNotificationsReadStore((state) => state.markAllRead);
+
+  const unreadItems = useMemo(
+    () => items.filter((item) => !readIds.includes(item.id)),
+    [items, readIds],
+  );
+  const unreadCount = unreadItems.length;
+  const previewItems = items.slice(0, 8);
 
   useEffect(() => {
     const onOutside = (e: MouseEvent) => {
@@ -22,6 +34,10 @@ export function NotificationCenter() {
     if (open) document.addEventListener("mousedown", onOutside);
     return () => document.removeEventListener("mousedown", onOutside);
   }, [open]);
+
+  const handleMarkAllRead = () => {
+    markAllRead(items.map((item) => item.id));
+  };
 
   return (
     <div className="relative" ref={panelRef}>
@@ -37,9 +53,9 @@ export function NotificationCenter() {
         aria-expanded={open}
       >
         <Bell className="h-4 w-4" />
-        {unread > 0 ? (
+        {unreadCount > 0 ? (
           <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white">
-            {unread > 9 ? "9+" : unread}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         ) : null}
       </button>
@@ -51,11 +67,24 @@ export function NotificationCenter() {
           aria-label="Notification center"
         >
           <div className="border-b border-slate-100 bg-blue-50 px-4 py-3">
-            <p className="text-sm font-semibold text-slate-900">Notifications</p>
-            <p className="text-xs text-slate-500">Recent platform broadcasts</p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-900">Notifications</p>
+                <p className="text-xs text-slate-500">Recent platform broadcasts</p>
+              </div>
+              {unreadCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="shrink-0 text-xs font-medium text-blue-600 transition-colors hover:text-blue-700"
+                >
+                  Mark all as read
+                </button>
+              ) : null}
+            </div>
           </div>
           <div className="max-h-80 overflow-y-auto">
-            {items.length === 0 ? (
+            {previewItems.length === 0 ? (
               <div className="px-4 py-10 text-center">
                 <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-100 bg-blue-50">
                   <Bell className="h-5 w-5 text-blue-600" />
@@ -65,23 +94,49 @@ export function NotificationCenter() {
               </div>
             ) : (
               <ul className="divide-y divide-slate-100">
-                {items.map((n) => (
-                  <li key={n.id}>
-                    <Link
-                      href={`${ROUTES.notifications}/${n.id}`}
-                      onClick={() => setOpen(false)}
-                      className="block px-4 py-3 transition-colors duration-200 hover:bg-slate-50"
-                    >
-                      <p className="text-sm font-medium text-slate-900 line-clamp-1">{n.title}</p>
-                      <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">{n.message}</p>
-                      {n.created_at ? (
-                        <p className="mt-1 text-[10px] text-slate-600">
-                          {new Date(n.created_at).toLocaleString()}
-                        </p>
-                      ) : null}
-                    </Link>
-                  </li>
-                ))}
+                {previewItems.map((n) => {
+                  const read = readIds.includes(n.id);
+
+                  return (
+                    <li key={n.id}>
+                      <Link
+                        href={`${ROUTES.notifications}/${n.id}`}
+                        onClick={() => {
+                          markRead([n.id]);
+                          setOpen(false);
+                        }}
+                        className={cn(
+                          "block px-4 py-3 transition-colors duration-200 hover:bg-slate-50",
+                          !read && "bg-blue-50/40",
+                        )}
+                      >
+                        <div className="flex items-start gap-2">
+                          {!read ? (
+                            <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-600" />
+                          ) : (
+                            <span className="mt-1.5 h-2 w-2 shrink-0" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={cn(
+                                "text-sm line-clamp-1 text-slate-900",
+                                !read && "font-semibold",
+                              )}
+                            >
+                              {n.title}
+                            </p>
+                            <p className="mt-0.5 text-xs text-slate-500 line-clamp-2">{n.message}</p>
+                            {n.created_at ? (
+                              <p className="mt-1 text-[10px] text-slate-600">
+                                {new Date(n.created_at).toLocaleString()}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </Link>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

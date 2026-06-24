@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type DragEvent, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   Eye,
@@ -19,6 +19,7 @@ import { CmsImageUpload } from "@/components/cms/cms-image-upload";
 import { CmsProductPicker } from "@/components/cms/cms-product-picker";
 import { useCmsList, useCmsMutations } from "@/hooks/use-cms";
 import { getCmsItem, type CmsBase, type CmsPayload } from "@/lib/api/services/cms";
+import { cn } from "@/lib/utils";
 
 export interface CmsFieldConfig<T extends CmsBase = CmsBase> {
   key: keyof T | string;
@@ -86,6 +87,8 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
   const [draft, setDraft] = useState<CmsPayload>({});
   const [productIds, setProductIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
@@ -177,18 +180,50 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
     }
   }
 
-  async function onMove(row: T, direction: -1 | 1) {
-    const index = sortedItems.findIndex((entry) => entry.id === row.id);
-    if (index < 0) return;
-    const swapIndex = index + direction;
-    if (swapIndex < 0 || swapIndex >= sortedItems.length) return;
+  async function onReorderRows(fromId: string, toId: string) {
+    if (fromId === toId) return;
+    const fromIndex = sortedItems.findIndex((entry) => entry.id === fromId);
+    const toIndex = sortedItems.findIndex((entry) => entry.id === toId);
+    if (fromIndex < 0 || toIndex < 0) return;
+
     const next = [...sortedItems];
-    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+
     try {
       await reorder.mutateAsync(next.map((item) => ({ id: item.id })));
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Reorder failed");
     }
+  }
+
+  function handleDragStart(event: DragEvent<HTMLTableRowElement>, rowId: string) {
+    setDraggedId(rowId);
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", rowId);
+  }
+
+  function handleDragOver(event: DragEvent<HTMLTableRowElement>, rowId: string) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    if (dragOverId !== rowId) {
+      setDragOverId(rowId);
+    }
+  }
+
+  function handleDrop(event: DragEvent<HTMLTableRowElement>, rowId: string) {
+    event.preventDefault();
+    const sourceId = draggedId ?? event.dataTransfer.getData("text/plain");
+    if (sourceId) {
+      void onReorderRows(sourceId, rowId);
+    }
+    setDraggedId(null);
+    setDragOverId(null);
+  }
+
+  function handleDragEnd() {
+    setDraggedId(null);
+    setDragOverId(null);
   }
 
   if (isLoading) {
@@ -226,22 +261,32 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
                   {column.header}
                 </th>
               ))}
-              <th className="w-16 px-3 py-3 text-center font-medium text-slate-700">
-                Order
-              </th>
               <th className="w-32 px-3 py-3 text-right font-medium text-slate-700">
                 Actions
               </th>
             </tr>
           </thead>
           <tbody>
-            {sortedItems.map((row, index) => (
+            {sortedItems.map((row) => (
               <tr
                 key={row.id}
-                className="border-b border-slate-200/80 hover:bg-slate-50"
+                draggable
+                onDragStart={(event) => handleDragStart(event, row.id)}
+                onDragOver={(event) => handleDragOver(event, row.id)}
+                onDrop={(event) => handleDrop(event, row.id)}
+                onDragEnd={handleDragEnd}
+                className={cn(
+                  "border-b border-slate-200/80 hover:bg-slate-50",
+                  draggedId === row.id && "opacity-50",
+                  dragOverId === row.id &&
+                    draggedId &&
+                    draggedId !== row.id &&
+                    "bg-blue-50 ring-2 ring-inset ring-blue-200",
+                )}
               >
-                <td className="px-3 py-3 text-slate-500">
-                  <GripVertical className="h-4 w-4" />
+                <td className="cursor-grab px-3 py-3 text-slate-500 active:cursor-grabbing">
+                  <GripVertical className="h-4 w-4" aria-hidden />
+                  <span className="sr-only">Drag to reorder</span>
                 </td>
                 {listColumns.map((column) => (
                   <td
@@ -255,28 +300,6 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
                         )}
                   </td>
                 ))}
-                <td className="px-3 py-3 text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={index === 0}
-                      onClick={() => void onMove(row, -1)}
-                    >
-                      ↑
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={index === sortedItems.length - 1}
-                      onClick={() => void onMove(row, 1)}
-                    >
-                      ↓
-                    </Button>
-                  </div>
-                </td>
                 <td className="px-3 py-3 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Button
@@ -315,7 +338,7 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
             {sortedItems.length === 0 ? (
               <tr>
                 <td
-                  colSpan={listColumns.length + 3}
+                  colSpan={listColumns.length + 2}
                   className="px-3 py-8 text-center text-sm text-slate-500"
                 >
                   No entries yet. Click “Add new” to create the first one.

@@ -34,7 +34,7 @@ function normalizeStatus(status: string): StatusTone {
   ) {
     return "pending";
   }
-  if (s.includes("reject") || s.includes("cancel") || s.includes("failed") || s.includes("blocked")) {
+  if (s.includes("reject") || s.includes("cancel") || s.includes("failed") || s.includes("blocked") || s.includes("terminat")) {
     return "rejected";
   }
   if (s.includes("closed") || s.includes("inactive") || s.includes("archived")) {

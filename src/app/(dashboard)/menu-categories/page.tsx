@@ -8,7 +8,7 @@ export default function MenuCategoriesPage() {
     <CmsSectionManager<MenuCategoryRow>
       section="menu"
       title="Hamburger Menu — Shop For"
-      description="Controls every row inside the side menu: Women, Men, Kids, Offers, Gifts, etc. Reorder them with the arrows."
+      description="Controls every row inside the side menu: Women, Men, Kids, Offers, Gifts, etc. Drag rows to reorder them."
       imageFolder="menu"
       formFields={[
         { key: "title", label: "Title", placeholder: "Women, Men, Kids & Infants…" },

@@ -186,6 +186,33 @@ export async function updateProduct(id: string, payload: ProductWritePayload) {
   return data.data;
 }
 
+export async function setProductCustomerVisibility(
+  id: string,
+  product: Product,
+  visible: boolean,
+) {
+  const payload: ProductWritePayload = {
+    name: product.name,
+    price: product.price,
+    status: visible ? "active" : "archived",
+  };
+
+  if (product.category_id != null) {
+    payload.category_id = product.category_id;
+  }
+  if (product.boutique_id != null) {
+    payload.boutique_id = product.boutique_id;
+  }
+  if (product.description != null) {
+    payload.description = product.description;
+  }
+  if (product.image != null) {
+    payload.image = product.image;
+  }
+
+  return updateProduct(id, payload);
+}
+
 export async function deleteProduct(id: string) {
   const { data } = await api.delete<ApiResponse<{ id: string }>>(
     `/products/${id}`,

@@ -9,6 +9,7 @@ export const ROUTES = {
   jewellerApprovals: "/jeweller-approvals",
   storeReview: (id: string) => `/jeweller-approvals/${id}`,
   users: "/users",
+  userDetails: (id: string) => `/users/${id}`,
   appointments: "/appointments",
   supportCenter: "/support/chat",
   supportCallbackRequests: "/support/callback-requests",
