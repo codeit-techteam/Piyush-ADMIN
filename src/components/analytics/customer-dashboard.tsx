@@ -23,16 +23,14 @@ export function CustomerDashboard({ data }: CustomerDashboardProps) {
         transition={{ duration: 0.3 }}
         className="space-y-6"
       >
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <AnalyticsStatCard title="Total Customers" value={cards.totalCustomers ?? 0} highlight />
           <AnalyticsStatCard title="New Users" value={cards.newUsers ?? 0} />
           <AnalyticsStatCard title="Wishlist Activity" value={cards.wishlistActivity ?? 0} />
-          <AnalyticsStatCard title="Search Trends" value={cards.searchTrends ?? 0} />
         </section>
 
         <section className="grid gap-4 lg:grid-cols-2">
           <AnalyticsAreaChart title="User Activity Timeline" data={charts.userActivityTimeline ?? []} />
-          <AnalyticsAreaChart title="Search Analytics" data={charts.searchAnalytics ?? []} />
           <AnalyticsAreaChart title="Wishlist Growth" data={charts.wishlistGrowth ?? []} />
         </section>
 

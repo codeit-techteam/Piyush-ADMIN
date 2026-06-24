@@ -7,7 +7,7 @@ import { AnalyticsSkeleton } from "@/components/analytics/analytics-skeleton";
 import { DashboardSwitcher } from "@/components/analytics/dashboard-switcher";
 import { DateRangeFilter } from "@/components/analytics/date-range-filter";
 import { PageHeader } from "@/components/layout/page-header";
-import { Select } from "@/components/ui/select";
+import { BoutiqueSearchSelect } from "@/components/analytics/boutique-search-select";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { Store } from "lucide-react";
@@ -75,6 +75,14 @@ export default function DashboardPage() {
     if (next !== "custom") {
       setCustomFrom(undefined);
       setCustomTo(undefined);
+      return;
+    }
+    if (!customFrom || !customTo) {
+      const to = new Date();
+      const from = new Date();
+      from.setDate(from.getDate() - 30);
+      setCustomFrom(from.toISOString());
+      setCustomTo(to.toISOString());
     }
   };
 
@@ -100,19 +108,12 @@ export default function DashboardPage() {
           }}
         />
         {layer === "boutique" ? (
-          <Select
+          <BoutiqueSearchSelect
+            boutiques={boutiquesList.data ?? []}
             value={boutiqueId}
-            onChange={(e) => setBoutiqueId(e.target.value)}
-            className="min-w-[220px] lg:max-w-xs"
-          >
-            <option value="">Select boutique…</option>
-            {(boutiquesList.data ?? []).map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name}
-                {b.location ? ` — ${b.location}` : ""}
-              </option>
-            ))}
-          </Select>
+            onChange={setBoutiqueId}
+            isLoading={boutiquesList.isLoading}
+          />
         ) : null}
       </div>
 
@@ -130,21 +131,21 @@ export default function DashboardPage() {
           <PlatformDashboard data={platform.data} isFetching={platform.isFetching} />
         ) : null}
 
+        {layer === "customer" && customer.data && !customer.isLoading ? (
+          <CustomerDashboard data={customer.data} />
+        ) : null}
+
         {layer === "boutique" ? (
           !boutiqueId ? (
             <EmptyState
               icon={Store}
               title="Choose a boutique"
-              description="Pick a boutique from the dropdown above to explore performance metrics, revenue trends, and customer engagement."
-              hint="Use the boutique selector in the filter bar"
+              description="Search and pick a boutique above to explore visits, products, appointments, and engagement metrics."
+              hint="Use the boutique search in the filter bar"
             />
           ) : boutique.data && !boutique.isLoading ? (
             <BoutiqueDashboard data={boutique.data} isFetching={boutique.isFetching} />
           ) : null
-        ) : null}
-
-        {layer === "customer" && customer.data && !customer.isLoading ? (
-          <CustomerDashboard data={customer.data} />
         ) : null}
       </AnimatePresence>
     </div>

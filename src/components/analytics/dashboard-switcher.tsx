@@ -13,16 +13,16 @@ const TABS: { id: DashboardLayer; label: string; description: string; icon: type
     icon: BarChart3,
   },
   {
-    id: "boutique",
-    label: "Boutique Analytics",
-    description: "Per-boutique performance",
-    icon: Store,
-  },
-  {
     id: "customer",
     label: "Customer Analytics",
     description: "User behavior & interests",
     icon: Users,
+  },
+  {
+    id: "boutique",
+    label: "Boutique Analytics",
+    description: "Per-boutique performance",
+    icon: Store,
   },
 ];
 

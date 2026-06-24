@@ -1,6 +1,23 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import {
   Eye,
@@ -66,6 +83,102 @@ function inputValue(value: unknown): string {
   return String(value);
 }
 
+interface SortableTableRowProps<T extends CmsBase> {
+  row: T;
+  listColumns: CmsSectionManagerProps<T>["listColumns"];
+  rowTitle: (row: T) => string;
+  onToggleActive: (row: T) => void;
+  onEdit: (row: T) => void;
+  onDelete: (row: T) => void;
+}
+
+function SortableTableRow<T extends CmsBase>({
+  row,
+  listColumns,
+  rowTitle,
+  onToggleActive,
+  onEdit,
+  onDelete,
+}: SortableTableRowProps<T>) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: row.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className="border-b border-slate-200/80 hover:bg-slate-50"
+    >
+      <td className="px-3 py-3 text-slate-500">
+        <button
+          type="button"
+          className="cursor-grab touch-none rounded p-1 hover:bg-slate-100 active:cursor-grabbing"
+          aria-label={`Drag to reorder ${rowTitle(row)}`}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </td>
+      {listColumns.map((column) => (
+        <td
+          key={column.key}
+          className="px-3 py-3 text-slate-800 align-middle"
+        >
+          {column.render
+            ? column.render(row)
+            : inputValue((row as Record<string, unknown>)[column.key])}
+        </td>
+      ))}
+      <td className="px-3 py-3 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => void onToggleActive(row)}
+            title={row.is_active ? "Hide on app" : "Show on app"}
+          >
+            {row.is_active ? (
+              <Eye className="h-4 w-4 text-emerald-700" />
+            ) : (
+              <EyeOff className="h-4 w-4 text-slate-500" />
+            )}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => void onEdit(row)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => void onDelete(row)}
+          >
+            <Trash2 className="h-4 w-4 text-red-400" />
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 export function CmsSectionManager<T extends CmsBase = CmsBase>({
   section,
   title,
@@ -90,6 +203,20 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
     [items],
+  );
+
+  const sortableIds = useMemo(
+    () => sortedItems.map((item) => item.id),
+    [sortedItems],
+  );
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
   );
 
   function openCreate() {
@@ -177,13 +304,15 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
     }
   }
 
-  async function onMove(row: T, direction: -1 | 1) {
-    const index = sortedItems.findIndex((entry) => entry.id === row.id);
-    if (index < 0) return;
-    const swapIndex = index + direction;
-    if (swapIndex < 0 || swapIndex >= sortedItems.length) return;
-    const next = [...sortedItems];
-    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+  async function onDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = sortedItems.findIndex((entry) => entry.id === active.id);
+    const newIndex = sortedItems.findIndex((entry) => entry.id === over.id);
+    if (oldIndex < 0 || newIndex < 0) return;
+
+    const next = arrayMove(sortedItems, oldIndex, newIndex);
     try {
       await reorder.mutateAsync(next.map((item) => ({ id: item.id })));
     } catch (err) {
@@ -214,116 +343,58 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
       </header>
 
       <Card className="overflow-x-auto p-0">
-        <table className="admin-table min-w-[760px]">
-          <thead>
-            <tr>
-              <th className="w-12 px-3 py-3"></th>
-              {listColumns.map((column) => (
-                <th
-                  key={column.key}
-                  className="px-3 py-3 font-medium text-slate-700"
-                >
-                  {column.header}
-                </th>
-              ))}
-              <th className="w-16 px-3 py-3 text-center font-medium text-slate-700">
-                Order
-              </th>
-              <th className="w-32 px-3 py-3 text-right font-medium text-slate-700">
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedItems.map((row, index) => (
-              <tr
-                key={row.id}
-                className="border-b border-slate-200/80 hover:bg-slate-50"
-              >
-                <td className="px-3 py-3 text-slate-500">
-                  <GripVertical className="h-4 w-4" />
-                </td>
-                {listColumns.map((column) => (
-                  <td
-                    key={column.key}
-                    className="px-3 py-3 text-slate-800 align-middle"
-                  >
-                    {column.render
-                      ? column.render(row)
-                      : inputValue(
-                          (row as Record<string, unknown>)[column.key],
-                        )}
-                  </td>
-                ))}
-                <td className="px-3 py-3 text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={index === 0}
-                      onClick={() => void onMove(row, -1)}
-                    >
-                      ↑
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={index === sortedItems.length - 1}
-                      onClick={() => void onMove(row, 1)}
-                    >
-                      ↓
-                    </Button>
-                  </div>
-                </td>
-                <td className="px-3 py-3 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void onToggleActive(row)}
-                      title={row.is_active ? "Hide on app" : "Show on app"}
-                    >
-                      {row.is_active ? (
-                        <Eye className="h-4 w-4 text-emerald-700" />
-                      ) : (
-                        <EyeOff className="h-4 w-4 text-slate-500" />
-                      )}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void openEdit(row)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void onDelete(row)}
-                    >
-                      <Trash2 className="h-4 w-4 text-red-400" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {sortedItems.length === 0 ? (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event) => void onDragEnd(event)}
+        >
+          <table className="admin-table min-w-[760px]">
+            <thead>
               <tr>
-                <td
-                  colSpan={listColumns.length + 3}
-                  className="px-3 py-8 text-center text-sm text-slate-500"
-                >
-                  No entries yet. Click “Add new” to create the first one.
-                </td>
+                <th className="w-12 px-3 py-3" aria-label="Reorder" />
+                {listColumns.map((column) => (
+                  <th
+                    key={column.key}
+                    className="px-3 py-3 font-medium text-slate-700"
+                  >
+                    {column.header}
+                  </th>
+                ))}
+                <th className="w-32 px-3 py-3 text-right font-medium text-slate-700">
+                  Actions
+                </th>
               </tr>
-            ) : null}
-          </tbody>
-        </table>
+            </thead>
+            <SortableContext
+              items={sortableIds}
+              strategy={verticalListSortingStrategy}
+            >
+              <tbody>
+                {sortedItems.map((row) => (
+                  <SortableTableRow
+                    key={row.id}
+                    row={row}
+                    listColumns={listColumns}
+                    rowTitle={rowTitle}
+                    onToggleActive={(entry) => void onToggleActive(entry)}
+                    onEdit={(entry) => void openEdit(entry)}
+                    onDelete={(entry) => void onDelete(entry)}
+                  />
+                ))}
+                {sortedItems.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={listColumns.length + 2}
+                      className="px-3 py-8 text-center text-sm text-slate-500"
+                    >
+                      No entries yet. Click “Add new” to create the first one.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </SortableContext>
+          </table>
+        </DndContext>
       </Card>
 
       {(creating || editing) ? (

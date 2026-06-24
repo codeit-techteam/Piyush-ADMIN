@@ -33,10 +33,7 @@ export default function UsersPage() {
 
   return (
     <section className="space-y-8">
-      <PageHeader
-        title="Users Management"
-        subtitle="Synced user profiles from Supabase users_profile."
-      />
+      <PageHeader title="Users Management" />
 
       {users.length === 0 ? (
         <EmptyState

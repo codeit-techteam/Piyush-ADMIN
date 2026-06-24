@@ -28,7 +28,7 @@ export interface PlatformAnalytics {
     approvedBoutiques: number;
     pendingBoutiques: number;
     totalProducts: number;
-    totalCollections: number;
+    newUsers: number;
     totalAppointments: number;
   };
   charts: {
@@ -42,14 +42,7 @@ export interface PlatformAnalytics {
       id: string;
       name: string;
       appointments: number;
-      revenue: number;
-    }>;
-    recentActivities: Array<{
-      id: string;
-      action: string;
-      boutiqueId?: string | null;
-      metadata?: Record<string, unknown>;
-      createdAt: string;
+      location?: string | null;
     }>;
     latestRegisteredBoutiques: Array<Record<string, unknown>>;
   };

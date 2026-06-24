@@ -18,12 +18,36 @@ function buildParams(query: DateRangeQuery = {}) {
   return params;
 }
 
+function enrichTopPerformingBoutiqueLocations(
+  platform: PlatformAnalytics,
+  boutiques: BoutiqueAnalyticsOption[],
+): PlatformAnalytics {
+  const locationById = new Map(boutiques.map((b) => [b.id, b.location ?? null]));
+
+  return {
+    ...platform,
+    sections: {
+      ...platform.sections,
+      topPerformingBoutiques: (platform.sections.topPerformingBoutiques ?? []).map((boutique) => ({
+        ...boutique,
+        location: boutique.location ?? locationById.get(boutique.id) ?? null,
+      })),
+    },
+  };
+}
+
 export async function getPlatformAnalytics(query?: DateRangeQuery) {
-  const { data } = await api.get<ApiResponse<PlatformAnalytics>>("/analytics/platform", {
-    params: buildParams(query),
-    timeout: 60000,
-  });
-  return data.data;
+  const params = buildParams(query);
+
+  const [platformRes, boutiques] = await Promise.all([
+    api.get<ApiResponse<PlatformAnalytics>>("/analytics/platform", {
+      params,
+      timeout: 60000,
+    }),
+    listAnalyticsBoutiques().catch(() => [] as BoutiqueAnalyticsOption[]),
+  ]);
+
+  return enrichTopPerformingBoutiqueLocations(platformRes.data.data, boutiques);
 }
 
 export async function getBoutiqueAnalytics(query: DateRangeQuery) {
