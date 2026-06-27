@@ -87,6 +87,17 @@ function inputValue(value: unknown): string {
   return String(value);
 }
 
+const AUTO_SLUG_SECTIONS = new Set(["collections", "occasions"]);
+const HIDE_IMAGE_URL_SECTIONS = new Set(["collections", "occasions"]);
+
+function slugFromTitle(title: string): string {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 interface SortableTableRowProps<T extends CmsBase> {
   row: T;
   listColumns: CmsSectionManagerProps<T>["listColumns"];
@@ -276,6 +287,14 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
     setSaving(true);
     try {
       const payload: CmsPayload = { ...draft, product_ids: productIds };
+
+      if (AUTO_SLUG_SECTIONS.has(section)) {
+        const titleSource = String(draft.title ?? draft.name ?? "").trim();
+        if (titleSource) {
+          payload.slug = slugFromTitle(titleSource);
+        }
+      }
+
       if (editing) {
         await update.mutateAsync({ id: editing.id, payload });
         toast.success(`${rowTitle(editing as T)} updated`);
@@ -381,6 +400,7 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
                       helper={field.helper}
                       folder={field.imageFolder ?? imageFolder}
                       value={typeof value === "string" ? value : ""}
+                      showUrlInput={!HIDE_IMAGE_URL_SECTIONS.has(section)}
                       onChange={(url) => {
                         const next = url || null;
                         updateDraft(String(field.key), next);

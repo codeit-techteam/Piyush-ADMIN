@@ -21,7 +21,6 @@ export default function OccasionsPage() {
           label: "Subtitle / Tagline",
           placeholder: "Optional tagline shown below the title",
         },
-        { key: "slug", label: "Slug", helper: "Auto-generated if left blank" },
         { key: "image", label: "Card image", type: "image", imageFolder: "occasions" },
         {
           key: "collection_slug",

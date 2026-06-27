@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Package, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Package, Search, X } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PriceRangeSlider } from "@/components/products/price-range-slider";
 import { ErrorState } from "@/components/feedback/error-state";
 import { DashboardSkeleton } from "@/components/loaders/dashboard-skeleton";
 import { useProducts } from "@/hooks/use-products";
@@ -17,8 +18,9 @@ import { ROUTES } from "@/lib/constants/routes";
 import type { Product } from "@/types";
 
 const PAGE_SIZE = 20;
+const PRICE_FILTER_DEBOUNCE_MS = 500;
 
-type SortOption = "recent" | "oldest" | "name";
+type SortOption = "recent" | "oldest" | "name" | "price-asc" | "price-desc";
 
 function resolveProductImage(product: Product): string | null {
   const fromRelation =
@@ -42,6 +44,35 @@ function formatPrice(price: number) {
   return `INR ${Number(price ?? 0).toLocaleString("en-IN")}`;
 }
 
+function formatInrAmount(value: number) {
+  return `₹${value.toLocaleString("en-IN")}`;
+}
+
+function roundPriceBound(value: number, mode: "floor" | "ceil") {
+  if (value <= 0) return 0;
+  if (value <= 10_000) {
+    return mode === "floor" ? Math.floor(value / 100) * 100 : Math.ceil(value / 100) * 100;
+  }
+  return mode === "floor" ? Math.floor(value / 1000) * 1000 : Math.ceil(value / 1000) * 1000;
+}
+
+function computePriceBounds(products: Product[]) {
+  const prices = products
+    .map((product) => Number(product.price ?? 0))
+    .filter((price) => Number.isFinite(price) && price >= 0);
+
+  if (prices.length === 0) {
+    return { min: 0, max: 100_000 };
+  }
+
+  const rawMin = Math.min(...prices);
+  const rawMax = Math.max(...prices);
+  const min = roundPriceBound(rawMin, "floor");
+  const max = Math.max(min + 100, roundPriceBound(rawMax, "ceil"));
+
+  return { min, max };
+}
+
 export default function ProductsPage() {
   const router = useRouter();
   const { data, isLoading, isError, error } = useProducts();
@@ -55,6 +86,39 @@ export default function ProductsPage() {
   const [page, setPage] = useState(1);
 
   const products = data ?? [];
+
+  const priceBounds = useMemo(() => computePriceBounds(products), [products]);
+
+  const [sliderRange, setSliderRange] = useState<[number, number]>(() => [
+    priceBounds.min,
+    priceBounds.max,
+  ]);
+  const [debouncedRange, setDebouncedRange] = useState<[number, number]>(sliderRange);
+
+  useEffect(() => {
+    setSliderRange([priceBounds.min, priceBounds.max]);
+    setDebouncedRange([priceBounds.min, priceBounds.max]);
+  }, [priceBounds.min, priceBounds.max]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedRange(sliderRange);
+    }, PRICE_FILTER_DEBOUNCE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [sliderRange]);
+
+  const hasPriceFilter =
+    debouncedRange[0] > priceBounds.min || debouncedRange[1] < priceBounds.max;
+  const minPrice = hasPriceFilter ? debouncedRange[0] : undefined;
+  const maxPrice = hasPriceFilter ? debouncedRange[1] : undefined;
+
+  const hasActiveFilters = Boolean(search || boutiqueFilter || categoryFilter || hasPriceFilter);
+
+  const clearPriceFilter = () => {
+    setSliderRange([priceBounds.min, priceBounds.max]);
+    setDebouncedRange([priceBounds.min, priceBounds.max]);
+  };
 
   const approvedBoutiques = useMemo(
     () =>
@@ -77,12 +141,27 @@ export default function ProductsPage() {
       if (categoryFilter && product.category_id !== categoryFilter) {
         return false;
       }
+      const price = Number(product.price ?? 0);
+      if (minPrice != null && price < minPrice) {
+        return false;
+      }
+      if (maxPrice != null && price > maxPrice) {
+        return false;
+      }
       return true;
     });
 
     rows = [...rows].sort((a, b) => {
       if (sortBy === "name") {
         return a.name.localeCompare(b.name);
+      }
+
+      if (sortBy === "price-asc") {
+        return Number(a.price ?? 0) - Number(b.price ?? 0);
+      }
+
+      if (sortBy === "price-desc") {
+        return Number(b.price ?? 0) - Number(a.price ?? 0);
       }
 
       const aTime = new Date(a.createdAt).getTime();
@@ -96,13 +175,13 @@ export default function ProductsPage() {
     });
 
     return rows;
-  }, [products, search, boutiqueFilter, categoryFilter, sortBy]);
+  }, [products, search, boutiqueFilter, categoryFilter, minPrice, maxPrice, sortBy]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
 
   useEffect(() => {
     setPage(1);
-  }, [search, boutiqueFilter, categoryFilter, sortBy]);
+  }, [search, boutiqueFilter, categoryFilter, minPrice, maxPrice, sortBy]);
 
   useEffect(() => {
     if (page > totalPages) {
@@ -181,15 +260,65 @@ export default function ProductsPage() {
                 <option value="recent">Recently added</option>
                 <option value="oldest">Oldest first</option>
                 <option value="name">Name (A–Z)</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
               </select>
             </div>
+
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium text-slate-700">Price Range (₹)</p>
+                <p className="text-sm text-slate-600">
+                  {formatInrAmount(sliderRange[0])} – {formatInrAmount(sliderRange[1])}
+                </p>
+              </div>
+
+              <PriceRangeSlider
+                min={priceBounds.min}
+                max={priceBounds.max}
+                value={sliderRange}
+                onChange={setSliderRange}
+              />
+
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-slate-500">
+                  {formatInrAmount(priceBounds.min)} – {formatInrAmount(priceBounds.max)}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8"
+                  onClick={clearPriceFilter}
+                  disabled={!hasPriceFilter}
+                >
+                  Clear
+                </Button>
+              </div>
+            </div>
+
+            {hasPriceFilter ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700">
+                  {formatInrAmount(debouncedRange[0])} – {formatInrAmount(debouncedRange[1])}
+                  <button
+                    type="button"
+                    onClick={clearPriceFilter}
+                    className="rounded-full p-0.5 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+                    aria-label="Clear price filter"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              </div>
+            ) : null}
           </Card>
 
           {filteredProducts.length === 0 ? (
             <Card className="p-8 text-center">
               <p className="text-base font-medium text-slate-800">No products found</p>
               <p className="mt-2 text-sm text-slate-600">
-                {search || boutiqueFilter || categoryFilter
+                {hasActiveFilters
                   ? "Try clearing filters or search."
                   : "Products will appear here when boutiques add them."}
               </p>
