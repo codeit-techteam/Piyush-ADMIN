@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import {
   isAwaitingAdminReview,
-  resolveJewellerDocumentUrl,
+  resolveJewellerDocumentUrlWithClient,
 } from "@/lib/jeweller-documents";
 import type { BusinessDocument, StoreReviewDetails } from "@/types";
 
@@ -28,29 +28,21 @@ async function syncBoutiqueAssetUrls(
   const id = String(boutique.id);
   const updates: Record<string, string> = {};
 
-  const logoResolved = resolveJewellerDocumentUrl(
+  const logoResolved = resolveJewellerDocumentUrlWithClient(
+    supabase,
     typeof boutique.logo_url === "string" ? boutique.logo_url : null,
     supabaseUrl,
   );
-  if (
-    logoResolved &&
-    logoResolved !== boutique.logo_url &&
-    typeof boutique.logo_url === "string" &&
-    !boutique.logo_url.startsWith("http")
-  ) {
+  if (logoResolved && logoResolved !== boutique.logo_url) {
     updates.logo_url = logoResolved;
   }
 
-  const coverResolved = resolveJewellerDocumentUrl(
+  const coverResolved = resolveJewellerDocumentUrlWithClient(
+    supabase,
     typeof boutique.cover_image_url === "string" ? boutique.cover_image_url : null,
     supabaseUrl,
   );
-  if (
-    coverResolved &&
-    coverResolved !== boutique.cover_image_url &&
-    typeof boutique.cover_image_url === "string" &&
-    !boutique.cover_image_url.startsWith("http")
-  ) {
+  if (coverResolved && coverResolved !== boutique.cover_image_url) {
     updates.cover_image_url = coverResolved;
   }
 
@@ -66,9 +58,12 @@ async function syncBusinessDocumentUrls(
   supabaseUrl: string,
 ) {
   for (const doc of documents) {
-    const resolved = resolveJewellerDocumentUrl(doc.file_url, supabaseUrl);
+    const resolved = resolveJewellerDocumentUrlWithClient(
+      supabase,
+      doc.file_url,
+      supabaseUrl,
+    );
     if (!resolved || resolved === doc.file_url) continue;
-    if (doc.file_url.startsWith("http")) continue;
 
     const { error } = await supabase
       .from("business_documents")
@@ -79,6 +74,18 @@ async function syncBusinessDocumentUrls(
       doc.file_url = resolved;
     }
   }
+}
+
+function resolveAssetUrl(
+  supabase: AdminSupabase,
+  value: unknown,
+  supabaseUrl: string,
+): string | null {
+  return resolveJewellerDocumentUrlWithClient(
+    supabase,
+    typeof value === "string" ? value : null,
+    supabaseUrl,
+  );
 }
 
 export async function GET(
@@ -140,6 +147,7 @@ export async function GET(
     .order("doc_type", { ascending: true });
 
   let documents: BusinessDocument[] = [];
+  let documentsFromBusinessTable = false;
 
   if (verificationDocRows && verificationDocRows.length > 0) {
     documents = verificationDocRows.map((row) => ({
@@ -147,13 +155,15 @@ export async function GET(
       boutique_id: String(row.boutique_id),
       type: String(row.doc_type ?? "").toLowerCase(),
       name: String(row.doc_type ?? "").replace(/_/g, " "),
-      file_url: resolveJewellerDocumentUrl(row.file_url, supabaseUrl) ?? "",
+      file_url:
+        resolveJewellerDocumentUrlWithClient(supabase, row.file_url, supabaseUrl) ?? "",
       license_no: null,
       status: String(row.status ?? "pending").toLowerCase(),
       verified_at: row.reviewed_at ? String(row.reviewed_at) : null,
       created_at: row.uploaded_at ? String(row.uploaded_at) : null,
     }));
   } else {
+    documentsFromBusinessTable = true;
     const { data: docRows, error: docsError } = await supabase
       .from("business_documents")
       .select("*")
@@ -172,7 +182,8 @@ export async function GET(
       boutique_id: String(row.boutique_id),
       type: String(row.type ?? ""),
       name: String(row.name ?? ""),
-      file_url: resolveJewellerDocumentUrl(row.file_url, supabaseUrl) ?? "",
+      file_url:
+        resolveJewellerDocumentUrlWithClient(supabase, row.file_url, supabaseUrl) ?? "",
       license_no: row.license_no ? String(row.license_no) : null,
       status: String(row.status ?? "pending"),
       verified_at: row.verified_at ? String(row.verified_at) : null,
@@ -180,7 +191,9 @@ export async function GET(
     }));
   }
 
-  await syncBusinessDocumentUrls(supabase, documents, supabaseUrl);
+  if (documentsFromBusinessTable) {
+    await syncBusinessDocumentUrls(supabase, documents, supabaseUrl);
+  }
 
   const { count: productsCount } = await supabase
     .from("products")
@@ -210,16 +223,16 @@ export async function GET(
     }
   }
 
-  const logoUrl = resolveJewellerDocumentUrl(boutique.logo_url, supabaseUrl);
-  const coverUrl = resolveJewellerDocumentUrl(boutique.cover_image_url, supabaseUrl);
+  const logoUrl = resolveAssetUrl(supabase, boutique.logo_url, supabaseUrl);
+  const coverUrl = resolveAssetUrl(supabase, boutique.cover_image_url, supabaseUrl);
   const bannerImages = Array.isArray(boutique.banner_images)
     ? (boutique.banner_images as unknown[])
-        .map((u) => resolveJewellerDocumentUrl(String(u), supabaseUrl))
+        .map((u) => resolveAssetUrl(supabase, String(u), supabaseUrl))
         .filter((u): u is string => Boolean(u))
     : [];
   const galleryImages = Array.isArray(boutique.gallery_images)
     ? (boutique.gallery_images as unknown[])
-        .map((u) => resolveJewellerDocumentUrl(String(u), supabaseUrl))
+        .map((u) => resolveAssetUrl(supabase, String(u), supabaseUrl))
         .filter((u): u is string => Boolean(u))
     : [];
 
@@ -260,7 +273,7 @@ export async function GET(
     is_onboarding_done: Boolean(boutique.is_onboarding_done),
     logo_url: logoUrl,
     cover_image_url: coverUrl,
-    image: boutique.image ? resolveJewellerDocumentUrl(String(boutique.image), supabaseUrl) : null,
+    image: resolveAssetUrl(supabase, boutique.image, supabaseUrl),
     banner_images: bannerImages.length ? bannerImages : coverUrl ? [coverUrl] : [],
     gallery_images: galleryImages.length ? galleryImages : bannerImages,
     documents,

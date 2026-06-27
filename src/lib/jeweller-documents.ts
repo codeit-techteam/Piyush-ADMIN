@@ -1,9 +1,10 @@
+import type { BoutiqueVerificationStatus } from "@/types";
+import type { SupabaseClient } from "@supabase/supabase-js";
+
 const JEWELLER_DOCUMENTS_BUCKET = "jeweller-documents";
 
 /** Minimum products required before a jeweller can launch (matches Jewellers App). */
 export const MIN_PRODUCTS_FOR_LAUNCH = 5;
-
-import type { BoutiqueVerificationStatus } from "@/types";
 
 /**
  * True when document verification is pending admin review.
@@ -36,26 +37,109 @@ export function isPendingApprovalStatus(
   return isAwaitingAdminReview(verificationStatus, storeStatus);
 }
 
+function decodeRepeatedly(value: string, maxPasses = 4): string {
+  let current = value;
+  for (let i = 0; i < maxPasses; i += 1) {
+    try {
+      const next = decodeURIComponent(current);
+      if (next === current) break;
+      current = next;
+    } catch {
+      break;
+    }
+  }
+  return current;
+}
+
+/**
+ * Extract the storage object key from a full public/signed URL or a raw path.
+ * Example key: `{boutiqueId}/gst/1779772081256-Johnson George - SOW.pdf`
+ */
+export function extractJewellerDocumentStoragePath(
+  fileUrl: string | null | undefined,
+): string | null {
+  if (!fileUrl?.trim()) return null;
+
+  let value = fileUrl.trim().split("?")[0]?.split("#")[0] ?? "";
+
+  const bucketMarkers = [
+    `/storage/v1/object/public/${JEWELLER_DOCUMENTS_BUCKET}/`,
+    `/storage/v1/object/sign/${JEWELLER_DOCUMENTS_BUCKET}/`,
+    `/object/public/${JEWELLER_DOCUMENTS_BUCKET}/`,
+    `${JEWELLER_DOCUMENTS_BUCKET}/`,
+  ];
+
+  for (const marker of bucketMarkers) {
+    const index = value.indexOf(marker);
+    if (index >= 0) {
+      value = value.slice(index + marker.length);
+      break;
+    }
+  }
+
+  value = decodeRepeatedly(value.replace(/^\/+/, ""));
+  return value || null;
+}
+
+function encodeStoragePath(path: string): string {
+  return path
+    .split("/")
+    .filter((segment) => segment.length > 0)
+    .map((segment) => encodeURIComponent(decodeRepeatedly(segment)))
+    .join("/");
+}
+
+/**
+ * Build a public HTTPS URL for a jeweller-documents object.
+ * Handles raw storage paths and legacy/double-encoded full URLs.
+ */
 export function resolveJewellerDocumentUrl(
   fileUrl: string | null | undefined,
   supabaseUrl: string,
 ): string | null {
   if (!fileUrl?.trim()) return null;
+
   const trimmed = fileUrl.trim();
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed;
+  if (!supabaseUrl?.trim()) {
+    return trimmed.startsWith("http://") || trimmed.startsWith("https://")
+      ? trimmed
+      : null;
   }
+
+  const storagePath = extractJewellerDocumentStoragePath(trimmed);
+  if (!storagePath) return null;
+
   const base = supabaseUrl.replace(/\/$/, "");
-  const path = trimmed.replace(/^\//, "");
-  return `${base}/storage/v1/object/public/${JEWELLER_DOCUMENTS_BUCKET}/${path}`;
+  return `${base}/storage/v1/object/public/${JEWELLER_DOCUMENTS_BUCKET}/${encodeStoragePath(storagePath)}`;
+}
+
+/** Server-side resolver — uses Supabase getPublicUrl for canonical encoding. */
+export function resolveJewellerDocumentUrlWithClient(
+  supabase: SupabaseClient,
+  fileUrl: string | null | undefined,
+  supabaseUrl: string,
+): string | null {
+  const storagePath = extractJewellerDocumentStoragePath(fileUrl);
+  if (!storagePath) return null;
+
+  const { data } = supabase.storage
+    .from(JEWELLER_DOCUMENTS_BUCKET)
+    .getPublicUrl(storagePath);
+
+  const publicUrl = data.publicUrl?.trim();
+  if (publicUrl) return publicUrl;
+
+  return resolveJewellerDocumentUrl(fileUrl, supabaseUrl);
 }
 
 export function isImageUrl(url: string): boolean {
-  return /\.(jpe?g|png|gif|webp)(\?|$)/i.test(url);
+  const path = extractJewellerDocumentStoragePath(url) ?? url;
+  return /\.(jpe?g|png|gif|webp)(\?|$)/i.test(path);
 }
 
 export function isPdfUrl(url: string): boolean {
-  return /\.pdf(\?|$)/i.test(url);
+  const path = extractJewellerDocumentStoragePath(url) ?? url;
+  return /\.pdf(\?|$)/i.test(path);
 }
 
 export { JEWELLER_DOCUMENTS_BUCKET };

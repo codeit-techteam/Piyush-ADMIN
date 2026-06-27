@@ -12,6 +12,7 @@ interface CmsImageUploadProps {
   folder: string;
   label?: string;
   helper?: string;
+  showUrlInput?: boolean;
 }
 
 export function CmsImageUpload({
@@ -20,6 +21,7 @@ export function CmsImageUpload({
   folder,
   label = "Image",
   helper,
+  showUrlInput = true,
 }: CmsImageUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -84,11 +86,13 @@ export function CmsImageUpload({
             />
             {uploading ? `Uploading... ${progress}%` : "Click or drop to upload"}
           </label>
-          <Input
-            placeholder="…or paste an image URL"
-            value={value ?? ""}
-            onChange={(event) => onChange(event.target.value)}
-          />
+          {showUrlInput ? (
+            <Input
+              placeholder="…or paste an image URL"
+              value={value ?? ""}
+              onChange={(event) => onChange(event.target.value)}
+            />
+          ) : null}
           {value ? (
             <Button
               type="button"

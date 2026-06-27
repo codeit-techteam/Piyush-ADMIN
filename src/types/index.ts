@@ -271,6 +271,7 @@ export interface Boutique {
   member_id: string | null;
   store_tagline?: string | null;
   cover_image_url?: string | null;
+  logo_url?: string | null;
   address?: string | null;
   full_address?: string | null;
   onboarding_step?: number | null;

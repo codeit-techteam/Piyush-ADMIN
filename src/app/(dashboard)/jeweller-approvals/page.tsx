@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
@@ -17,15 +17,22 @@ import {
 import {
   activeBoutiques,
   approvalTabCounts,
+  isPendingStoreStatus,
   matchesApprovalTab,
   type ApprovalTab,
 } from "@/lib/boutique-approval";
+import { rowHighlightClass } from "@/lib/boutique-completion";
 import { ROUTES } from "@/lib/constants/routes";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { ErrorState } from "@/components/feedback/error-state";
+import {
+  ApprovalStatusBadge,
+  BoutiqueCompletionSummary,
+  resolveCompletionForBoutique,
+} from "@/components/boutiques/boutique-completion-summary";
+import { useBoutiqueCompletionMeta } from "@/hooks/use-boutique-completion";
 import type { Boutique } from "@/types";
 
 const TAB_LABELS: { key: ApprovalTab; label: string }[] = [
@@ -60,6 +67,7 @@ function StoreActions({
     try {
       await fn();
       await queryClient.invalidateQueries({ queryKey: ["boutiques"] });
+      await queryClient.invalidateQueries({ queryKey: ["boutique-completion"] });
       onMutated();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Action failed");
@@ -210,6 +218,17 @@ export default function BoutiquesPage() {
   const counts = approvalTabCounts(query.data ?? []);
   const filtered = allBoutiques.filter((b) => matchesApprovalTab(b, tab));
 
+  const completionBoutiqueIds = useMemo(
+    () =>
+      filtered
+        .filter((b) => b.is_self_managed && isPendingStoreStatus(b.store_status))
+        .map((b) => b.id),
+    [filtered],
+  );
+
+  const completionQuery = useBoutiqueCompletionMeta(completionBoutiqueIds);
+  const completionMeta = completionQuery.data;
+
   const openDetails = (boutique: Boutique) => {
     if (boutique.is_self_managed) {
       router.push(ROUTES.storeReview(boutique.id));
@@ -311,20 +330,24 @@ export default function BoutiquesPage() {
         </Card>
       ) : (
         <Card className="overflow-x-auto p-0">
-          <table className="admin-table min-w-[880px]">
+          <table className="admin-table min-w-[1040px]">
             <thead>
               <tr>
                 <th className="px-4 py-3 font-medium text-slate-700">Store</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Owner</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Phone</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Location</th>
+                <th className="px-4 py-3 font-medium text-slate-700">Completion</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Status</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Submitted</th>
                 <th className="px-4 py-3 text-right font-medium text-slate-700">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((boutique) => (
+              {filtered.map((boutique) => {
+                const completion = resolveCompletionForBoutique(boutique, completionMeta);
+
+                return (
                 <tr
                   key={boutique.id}
                   role="button"
@@ -336,7 +359,7 @@ export default function BoutiquesPage() {
                       openDetails(boutique);
                     }
                   }}
-                  className="cursor-pointer border-b border-slate-200/70 align-middle transition-colors hover:bg-slate-50 focus:bg-slate-50 focus:outline-none"
+                  className={`cursor-pointer border-b border-slate-200/70 align-middle transition-colors focus:outline-none ${rowHighlightClass(boutique, completion)}`}
                 >
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-900">{boutique.name}</p>
@@ -354,7 +377,23 @@ export default function BoutiquesPage() {
                     {boutique.location ?? boutique.address ?? "-"}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={boutique.store_status ?? "pending"} />
+                    {completionQuery.isLoading && boutique.is_self_managed && isPendingStoreStatus(boutique.store_status) ? (
+                      <span className="text-xs text-slate-400">Loading…</span>
+                    ) : (
+                      <BoutiqueCompletionSummary
+                        boutique={boutique}
+                        meta={completionMeta?.[boutique.id]}
+                      />
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isPendingStoreStatus(boutique.store_status) ? (
+                      <ApprovalStatusBadge boutique={boutique} completion={completion} />
+                    ) : (
+                      <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium capitalize text-slate-700">
+                        {boutique.store_status ?? "pending"}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     {boutique.created_at
@@ -365,7 +404,8 @@ export default function BoutiquesPage() {
                     <StoreActions boutique={boutique} onMutated={() => query.refetch()} />
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </Card>

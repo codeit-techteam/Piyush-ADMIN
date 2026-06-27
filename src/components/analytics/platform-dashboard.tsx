@@ -56,11 +56,6 @@ export function PlatformDashboard({ data }: PlatformDashboardProps) {
 
         <section className="grid gap-4 lg:grid-cols-2">
           <AnalyticsAreaChart title="User Growth" data={charts.userGrowth ?? []} />
-          <AnalyticsAreaChart
-            title="Boutique Approval Trends"
-            data={charts.boutiqueApprovalTrends ?? []}
-          />
-          <AnalyticsAreaChart title="Product Upload Trends" data={charts.productUploadTrends ?? []} />
           <AnalyticsAreaChart title="Appointment Trends" data={charts.appointmentTrends ?? []} />
         </section>
 

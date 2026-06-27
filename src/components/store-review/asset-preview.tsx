@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ExternalLink, FileText, Maximize2, X } from "lucide-react";
-import { isImageUrl, isPdfUrl } from "@/lib/jeweller-documents";
+import { env } from "@/config/env";
+import {
+  isImageUrl,
+  isPdfUrl,
+  resolveJewellerDocumentUrl,
+} from "@/lib/jeweller-documents";
 import { Button } from "@/components/ui/button";
 
 type AssetPreviewProps = {
@@ -11,10 +16,22 @@ type AssetPreviewProps = {
   aspect?: "square" | "wide";
 };
 
+function useResolvedAssetUrl(url: string): string {
+  return useMemo(() => {
+    const resolved = resolveJewellerDocumentUrl(url, env.NEXT_PUBLIC_SUPABASE_URL);
+    return resolved ?? url;
+  }, [url]);
+}
+
 export function AssetPreview({ url, label, aspect = "wide" }: AssetPreviewProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const isImage = isImageUrl(url);
-  const isPdf = isPdfUrl(url);
+  const resolvedUrl = useResolvedAssetUrl(url);
+  const isImage = isImageUrl(resolvedUrl);
+  const isPdf = isPdfUrl(resolvedUrl);
+
+  const openInNewTab = () => {
+    window.open(resolvedUrl, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <>
@@ -31,14 +48,15 @@ export function AssetPreview({ url, label, aspect = "wide" }: AssetPreviewProps)
             >
               <Maximize2 className="h-3.5 w-3.5" />
             </Button>
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex h-8 items-center rounded-md px-2 text-slate-600 hover:bg-slate-100 hover:text-blue-600"
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 px-2 text-xs"
+              onClick={openInNewTab}
             >
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
+              View File
+            </Button>
           </div>
         </div>
         <button
@@ -48,7 +66,11 @@ export function AssetPreview({ url, label, aspect = "wide" }: AssetPreviewProps)
         >
           {isImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={url} alt={label} className="h-full w-full object-cover" />
+            <img
+              src={resolvedUrl}
+              alt={label}
+              className="h-full w-full object-cover"
+            />
           ) : isPdf ? (
             <div className="flex h-full min-h-[160px] flex-col items-center justify-center gap-2 bg-white p-4">
               <FileText className="h-10 w-10 text-blue-600/80" />
@@ -83,38 +105,33 @@ export function AssetPreview({ url, label, aspect = "wide" }: AssetPreviewProps)
             {isImage ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={url}
+                src={resolvedUrl}
                 alt={label}
                 className="max-h-[80vh] w-full object-contain"
               />
             ) : isPdf ? (
               <iframe
-                src={url}
+                src={resolvedUrl}
                 title={label}
                 className="h-[80vh] w-full rounded-lg border border-slate-200 bg-white"
               />
             ) : (
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-8 text-center">
                 <p className="mb-4 text-slate-700">Preview not available for this file type.</p>
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  Open document in new tab
-                </a>
+                <Button type="button" variant="outline" onClick={openInNewTab}>
+                  View File
+                </Button>
               </div>
             )}
             <div className="flex justify-center">
-              <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
+              <Button
+                type="button"
+                variant="ghost"
+                className="inline-flex items-center gap-2 text-sm text-blue-600"
+                onClick={openInNewTab}
               >
                 Open in new tab <ExternalLink className="h-4 w-4" />
-              </a>
+              </Button>
             </div>
           </div>
         </div>
