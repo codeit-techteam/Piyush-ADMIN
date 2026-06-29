@@ -1,5 +1,6 @@
 import { api } from "@/lib/api";
-import type { ApiResponse, Product, ProductWritePayload } from "@/types";
+import { getBoutiqueState } from "@/lib/boutique-location";
+import type { ApiResponse, Boutique, Product, ProductWritePayload } from "@/types";
 
 function asStringArray(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -33,15 +34,45 @@ function mapPriceBreakup(
   };
 }
 
+function resolveBoutiqueFields(row: Record<string, unknown>): {
+  name: string;
+  state: string | null;
+} {
+  const boutique =
+    typeof row.boutique === "object" && row.boutique
+      ? (row.boutique as Record<string, unknown>)
+      : null;
+
+  if (!boutique) {
+    return { name: "Unknown boutique", state: null };
+  }
+
+  const name =
+    boutique.name != null ? String(boutique.name) : "Unknown boutique";
+
+  const locationInput: Pick<Boutique, "full_address" | "address" | "location"> = {
+    full_address:
+      typeof boutique.full_address === "string"
+        ? boutique.full_address
+        : typeof boutique.address === "string"
+          ? boutique.address
+          : null,
+    address: typeof boutique.address === "string" ? boutique.address : null,
+    location: typeof boutique.location === "string" ? boutique.location : null,
+  };
+
+  return {
+    name,
+    state: getBoutiqueState(locationInput as Boutique),
+  };
+}
+
 function mapProductRow(row: Record<string, unknown>): Product {
   const categoryName =
     typeof row.category === "object" && row.category && "name" in row.category
       ? String((row.category as { name?: string }).name ?? "Uncategorized")
       : "Uncategorized";
-  const boutiqueName =
-    typeof row.boutique === "object" && row.boutique && "name" in row.boutique
-      ? String((row.boutique as { name?: string }).name ?? "Unknown boutique")
-      : "Unknown boutique";
+  const { name: boutiqueName, state: boutiqueState } = resolveBoutiqueFields(row);
 
   const relationImages = Array.isArray(row.product_images)
     ? [...row.product_images]
@@ -100,6 +131,7 @@ function mapProductRow(row: Record<string, unknown>): Product {
           ? row.boutique_id
           : null,
     boutique_name: boutiqueName,
+    boutique_state: boutiqueState,
     price: Number(row.price ?? 0),
     createdAt:
       typeof row.created_at === "string"

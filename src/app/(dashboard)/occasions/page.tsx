@@ -22,11 +22,6 @@ export default function OccasionsPage() {
           placeholder: "Optional tagline shown below the title",
         },
         { key: "image", label: "Card image", type: "image", imageFolder: "occasions" },
-        {
-          key: "collection_slug",
-          label: "Linked collection slug",
-          helper: "Optional — taps this occasion will deep-link to the matching collection",
-        },
         { key: "description", label: "Description", type: "textarea" },
       ]}
       listColumns={[
@@ -48,6 +43,7 @@ export default function OccasionsPage() {
         { key: "title", header: "Title" },
         { key: "subtitle", header: "Subtitle" },
       ]}
+      omitFromSave={["collection_slug"]}
     />
   );
 }

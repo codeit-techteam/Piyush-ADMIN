@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   getBoutiqueAnalytics,
+  getBoutiqueOverviewStats,
   getCustomerAnalytics,
   getPlatformAnalytics,
   listAnalyticsBoutiques,
@@ -27,6 +28,16 @@ export function useBoutiqueAnalytics(query: DateRangeQuery & { boutiqueId?: stri
     queryFn: () => getBoutiqueAnalytics(query),
     enabled: enabled && Boolean(query.boutiqueId),
     refetchInterval: enabled && query.boutiqueId ? REFRESH_MS : false,
+    retry: 2,
+  });
+}
+
+export function useBoutiqueOverviewStats(query: DateRangeQuery, enabled = true) {
+  return useQuery({
+    queryKey: ["analytics", "boutique-overview", query],
+    queryFn: () => getBoutiqueOverviewStats(query),
+    enabled,
+    refetchInterval: enabled ? REFRESH_MS : false,
     retry: 2,
   });
 }

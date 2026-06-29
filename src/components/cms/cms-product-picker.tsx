@@ -115,6 +115,7 @@ export function CmsProductPicker({ value, onChange }: CmsProductPickerProps) {
                 <th className="w-10 px-2 py-2"></th>
                 <th className="px-2 py-2 text-left">Product</th>
                 <th className="px-2 py-2 text-left">Category</th>
+                <th className="px-2 py-2 text-left">Boutique</th>
                 <th className="w-24 px-2 py-2 text-right">Price</th>
               </tr>
             </thead>
@@ -149,6 +150,9 @@ export function CmsProductPicker({ value, onChange }: CmsProductPickerProps) {
                     <td className="px-2 py-2 text-slate-600">
                       {product.category_name ?? "—"}
                     </td>
+                    <td className="px-2 py-2 text-slate-600">
+                      {product.boutique_name ?? "—"}
+                    </td>
                     <td className="px-2 py-2 text-right text-slate-700">
                       ₹{Number(product.price ?? 0).toLocaleString("en-IN")}
                     </td>
@@ -158,7 +162,7 @@ export function CmsProductPicker({ value, onChange }: CmsProductPickerProps) {
               {sortedProducts.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-2 py-6 text-center text-xs text-slate-500"
                   >
                     No products match this search.

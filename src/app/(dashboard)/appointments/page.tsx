@@ -113,6 +113,11 @@ function formatAppointmentWhen(row: AdminAppointment) {
   return "—";
 }
 
+function truncateNote(text: string, maxLength = 40) {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, maxLength).trimEnd()}…`;
+}
+
 function matchesSearch(row: AdminAppointment, query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return true;
@@ -317,7 +322,7 @@ export default function AppointmentsPage() {
                 <th className="px-4 py-3 font-medium text-slate-700">Customer</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Phone</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Boutique</th>
-                <th className="px-4 py-3 font-medium text-slate-700">Service</th>
+                <th className="px-4 py-3 font-medium text-slate-700">Note</th>
                 <th className="px-4 py-3 font-medium text-slate-700">When</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Status</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Booked</th>
@@ -328,8 +333,7 @@ export default function AppointmentsPage() {
                 const displayName =
                   row.customerName ?? row.userDisplayName ?? "Guest";
                 const displayPhone = row.customerPhone ?? row.userPhone ?? "—";
-                const service =
-                  row.serviceRequested ?? row.consultationType ?? "Consultation";
+                const noteText = row.notes?.trim() || null;
                 const whenLabel = formatAppointmentWhen(row);
                 const bookedAt = formatBookedAtIst(row.createdAt);
 
@@ -343,7 +347,11 @@ export default function AppointmentsPage() {
                         <p className="text-xs text-slate-500">{row.boutiqueSlug}</p>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3 text-slate-700">{service}</td>
+                    <td className="px-4 py-3 text-slate-700">
+                      {noteText ? (
+                        <span title={noteText}>{truncateNote(noteText)}</span>
+                      ) : null}
+                    </td>
                     <td className="px-4 py-3 text-slate-700">{whenLabel}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={row.status} badge={row.badge} />

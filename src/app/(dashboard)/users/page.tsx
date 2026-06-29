@@ -3,10 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
-import { ArrowDownAZ, ArrowUpAZ, Search, Users } from "lucide-react";
+import { Search, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -14,7 +13,17 @@ import { PageHeader } from "@/components/layout/page-header";
 import { useUsers } from "@/hooks/use-users";
 import { ROUTES } from "@/lib/constants/routes";
 
-type JoinSort = "newest" | "oldest";
+type SortOption = "newest" | "oldest" | "name-asc" | "name-desc";
+
+function compareCustomerName(a: string | null | undefined, b: string | null | undefined, desc: boolean) {
+  const aName = a?.trim() || null;
+  const bName = b?.trim() || null;
+  if (!aName && !bName) return 0;
+  if (!aName) return 1;
+  if (!bName) return -1;
+  const cmp = aName.localeCompare(bName);
+  return desc ? -cmp : cmp;
+}
 
 function UsersTableSkeleton() {
   return (
@@ -36,7 +45,7 @@ export default function UsersPage() {
   const usersQuery = useUsers();
   const users = usersQuery.data ?? [];
   const [search, setSearch] = useState("");
-  const [joinSort, setJoinSort] = useState<JoinSort>("newest");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
 
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -53,13 +62,19 @@ export default function UsersPage() {
     });
 
     result = [...result].sort((a, b) => {
+      if (sortBy === "name-asc") {
+        return compareCustomerName(a.name, b.name, false);
+      }
+      if (sortBy === "name-desc") {
+        return compareCustomerName(a.name, b.name, true);
+      }
       const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
       const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return joinSort === "newest" ? bTime - aTime : aTime - bTime;
+      return sortBy === "newest" ? bTime - aTime : aTime - bTime;
     });
 
     return result;
-  }, [users, search, joinSort]);
+  }, [users, search, sortBy]);
 
   if (usersQuery.isLoading) {
     return <UsersTableSkeleton />;
@@ -91,20 +106,16 @@ export default function UsersPage() {
             className="pl-9"
           />
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setJoinSort((current) => (current === "newest" ? "oldest" : "newest"))}
-          className="shrink-0"
+        <select
+          className="h-10 shrink-0 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as SortOption)}
         >
-          {joinSort === "newest" ? (
-            <ArrowDownAZ className="mr-2 h-4 w-4" />
-          ) : (
-            <ArrowUpAZ className="mr-2 h-4 w-4" />
-          )}
-          {joinSort === "newest" ? "Newest first" : "Oldest first"}
-        </Button>
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+          <option value="name-asc">A–Z</option>
+          <option value="name-desc">Z–A</option>
+        </select>
       </div>
 
       {users.length === 0 ? (
