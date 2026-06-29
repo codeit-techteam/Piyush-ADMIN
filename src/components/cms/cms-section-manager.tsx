@@ -70,6 +70,8 @@ export interface CmsSectionManagerProps<T extends CmsBase = CmsBase> {
   defaultDraft?: CmsPayload;
   /** Optional title transformer for the list row (defaults to title || name). */
   rowTitle?: (row: T) => string;
+  /** Keys stripped from the save payload (e.g. legacy DB columns no longer edited in UI). */
+  omitFromSave?: string[];
 }
 
 function defaultRowTitle(row: CmsBase): string {
@@ -206,6 +208,7 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
   showSortOrderInForm = true,
   defaultDraft,
   rowTitle = defaultRowTitle,
+  omitFromSave,
 }: CmsSectionManagerProps<T>) {
   const { data: items = [], isLoading, isError, error, refetch } =
     useCmsList<T>(section);
@@ -292,6 +295,12 @@ export function CmsSectionManager<T extends CmsBase = CmsBase>({
         const titleSource = String(draft.title ?? draft.name ?? "").trim();
         if (titleSource) {
           payload.slug = slugFromTitle(titleSource);
+        }
+      }
+
+      if (omitFromSave?.length) {
+        for (const key of omitFromSave) {
+          delete (payload as Record<string, unknown>)[key];
         }
       }
 

@@ -326,12 +326,13 @@ export default function ProductsPage() {
           ) : (
             <div className="space-y-3">
               <Card className="overflow-x-auto p-0">
-                <table className="admin-table min-w-[880px]">
+                <table className="admin-table min-w-[980px]">
                   <thead>
                     <tr>
                       <th className="px-4 py-3 font-medium text-slate-700">Product</th>
                       <th className="px-4 py-3 font-medium text-slate-700">Category</th>
                       <th className="px-4 py-3 font-medium text-slate-700">Boutique</th>
+                      <th className="px-4 py-3 font-medium text-slate-700">State</th>
                       <th className="px-4 py-3 font-medium text-slate-700">Price</th>
                     </tr>
                   </thead>
@@ -375,6 +376,9 @@ export default function ProductsPage() {
                           </td>
                           <td className="px-4 py-3 text-slate-700">
                             {product.boutique_name ?? "—"}
+                          </td>
+                          <td className="px-4 py-3 text-slate-700">
+                            {product.boutique_state ?? "—"}
                           </td>
                           <td className="px-4 py-3 text-slate-700">{formatPrice(product.price)}</td>
                         </tr>

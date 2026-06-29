@@ -29,11 +29,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ErrorState } from "@/components/feedback/error-state";
 import {
   ApprovalStatusBadge,
-  BoutiqueCompletionSummary,
   resolveCompletionForBoutique,
 } from "@/components/boutiques/boutique-completion-summary";
 import { useBoutiqueCompletionMeta } from "@/hooks/use-boutique-completion";
+import { getBoutiqueCity, getBoutiqueState } from "@/lib/boutique-location";
 import type { Boutique } from "@/types";
+
+type SortOption = "recent" | "oldest" | "name-asc" | "name-desc";
 
 const TAB_LABELS: { key: ApprovalTab; label: string }[] = [
   { key: "all", label: "All" },
@@ -198,6 +200,7 @@ export default function BoutiquesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<ApprovalTab>(() => parseTabParam(searchParams.get("tab")));
+  const [sortBy, setSortBy] = useState<SortOption>("recent");
 
   useEffect(() => {
     setTab(parseTabParam(searchParams.get("tab")));
@@ -216,7 +219,23 @@ export default function BoutiquesPage() {
 
   const allBoutiques = activeBoutiques(query.data ?? []);
   const counts = approvalTabCounts(query.data ?? []);
-  const filtered = allBoutiques.filter((b) => matchesApprovalTab(b, tab));
+  const filtered = useMemo(() => {
+    const tabFiltered = allBoutiques.filter((b) => matchesApprovalTab(b, tab));
+    return [...tabFiltered].sort((a, b) => {
+      if (sortBy === "name-asc") {
+        return a.name.localeCompare(b.name);
+      }
+      if (sortBy === "name-desc") {
+        return b.name.localeCompare(a.name);
+      }
+      const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+      if (sortBy === "oldest") {
+        return aTime - bTime;
+      }
+      return bTime - aTime;
+    });
+  }, [allBoutiques, tab, sortBy]);
 
   const completionBoutiqueIds = useMemo(
     () =>
@@ -321,6 +340,19 @@ export default function BoutiquesPage() {
         ))}
       </div>
 
+      <div className="flex justify-end">
+        <select
+          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-800"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as SortOption)}
+        >
+          <option value="recent">Recently added</option>
+          <option value="oldest">Oldest first</option>
+          <option value="name-asc">A–Z</option>
+          <option value="name-desc">Z–A</option>
+        </select>
+      </div>
+
       {filtered.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-base font-medium text-slate-700">
@@ -330,14 +362,14 @@ export default function BoutiquesPage() {
         </Card>
       ) : (
         <Card className="overflow-x-auto p-0">
-          <table className="admin-table min-w-[1040px]">
+          <table className="admin-table min-w-[1000px]">
             <thead>
               <tr>
                 <th className="px-4 py-3 font-medium text-slate-700">Store</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Owner</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Phone</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Location</th>
-                <th className="px-4 py-3 font-medium text-slate-700">Completion</th>
+                <th className="px-4 py-3 font-medium text-slate-700">State</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Status</th>
                 <th className="px-4 py-3 font-medium text-slate-700">Submitted</th>
                 <th className="px-4 py-3 text-right font-medium text-slate-700">Actions</th>
@@ -374,17 +406,10 @@ export default function BoutiquesPage() {
                     {boutique.phone_number ?? boutique.contact_number ?? "-"}
                   </td>
                   <td className="px-4 py-3 text-slate-600">
-                    {boutique.location ?? boutique.address ?? "-"}
+                    {getBoutiqueCity(boutique) ?? "-"}
                   </td>
-                  <td className="px-4 py-3">
-                    {completionQuery.isLoading && boutique.is_self_managed && isPendingStoreStatus(boutique.store_status) ? (
-                      <span className="text-xs text-slate-400">Loading…</span>
-                    ) : (
-                      <BoutiqueCompletionSummary
-                        boutique={boutique}
-                        meta={completionMeta?.[boutique.id]}
-                      />
-                    )}
+                  <td className="px-4 py-3 text-slate-600">
+                    {getBoutiqueState(boutique) ?? "-"}
                   </td>
                   <td className="px-4 py-3">
                     {isPendingStoreStatus(boutique.store_status) ? (

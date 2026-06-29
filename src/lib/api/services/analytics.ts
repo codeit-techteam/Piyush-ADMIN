@@ -3,6 +3,7 @@ import type { ApiResponse } from "@/types";
 import type {
   BoutiqueAnalytics,
   BoutiqueAnalyticsOption,
+  BoutiqueOverviewStats,
   CustomerAnalytics,
   DateRangeQuery,
   DashboardLayer,
@@ -56,6 +57,25 @@ export async function getBoutiqueAnalytics(query: DateRangeQuery) {
     timeout: 60000,
   });
   return data.data;
+}
+
+export async function getBoutiqueOverviewStats(query?: DateRangeQuery) {
+  const params = new URLSearchParams();
+  if (query?.range) params.set("range", query.range);
+  if (query?.from) params.set("from", query.from);
+  if (query?.to) params.set("to", query.to);
+
+  const qs = params.toString();
+  const res = await fetch(`/api/admin/analytics/boutique-overview${qs ? `?${qs}` : ""}`);
+  const json = (await res.json()) as ApiResponse<BoutiqueOverviewStats> & {
+    message?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(json.message ?? "Failed to load boutique overview stats");
+  }
+
+  return json.data;
 }
 
 export async function getCustomerAnalytics(query?: DateRangeQuery) {

@@ -97,6 +97,7 @@ export interface Product {
   boutique_id?: string | null;
   primary_boutique_id?: string | null;
   boutique_name?: string;
+  boutique_state?: string | null;
   owner_jeweller_id?: string | null;
   last_admin_action_at?: string | null;
   price: number;

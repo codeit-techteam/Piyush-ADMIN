@@ -105,3 +105,18 @@ export interface BoutiqueAnalyticsOption {
   status?: string;
   verified?: boolean;
 }
+
+export interface BoutiqueOverviewStat {
+  boutiqueId: string;
+  name: string;
+  count: number;
+}
+
+export interface BoutiqueOverviewStats {
+  range: { from: string; to: string; preset: string };
+  cards: {
+    mostViewed: BoutiqueOverviewStat | null;
+    mostAppointments: BoutiqueOverviewStat | null;
+    maxProducts: BoutiqueOverviewStat | null;
+  };
+}

@@ -7,6 +7,7 @@ import { AnalyticsSkeleton } from "@/components/analytics/analytics-skeleton";
 import { DashboardSwitcher } from "@/components/analytics/dashboard-switcher";
 import { DateRangeFilter } from "@/components/analytics/date-range-filter";
 import { PageHeader } from "@/components/layout/page-header";
+import { BoutiqueOverviewCards } from "@/components/analytics/boutique-overview-cards";
 import { BoutiqueSearchSelect } from "@/components/analytics/boutique-search-select";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -14,6 +15,7 @@ import { Store } from "lucide-react";
 import {
   useAnalyticsBoutiques,
   useBoutiqueAnalytics,
+  useBoutiqueOverviewStats,
   useCustomerAnalytics,
   usePlatformAnalytics,
 } from "@/hooks/use-analytics";
@@ -62,10 +64,25 @@ export default function DashboardPage() {
     return q;
   }, [preset, customFrom, customTo, layer, boutiqueId]);
 
+  const overviewDateQuery: DateRangeQuery = useMemo(() => {
+    const q: DateRangeQuery = { range: preset };
+    if (preset === "custom" && customFrom && customTo) {
+      q.from = customFrom;
+      q.to = customTo;
+    }
+    return q;
+  }, [preset, customFrom, customTo]);
+
+  const overviewDateReady = preset !== "custom" || Boolean(customFrom && customTo);
+
   const platform = usePlatformAnalytics(dateQuery, true);
   const boutique = useBoutiqueAnalytics(
     { ...dateQuery, boutiqueId },
     Boolean(boutiqueId),
+  );
+  const boutiqueOverview = useBoutiqueOverviewStats(
+    overviewDateQuery,
+    layer === "boutique" && overviewDateReady,
   );
   const customer = useCustomerAnalytics(dateQuery, true);
   const boutiquesList = useAnalyticsBoutiques();
@@ -119,6 +136,14 @@ export default function DashboardPage() {
           />
         ) : null}
       </div>
+
+      {layer === "boutique" ? (
+        <BoutiqueOverviewCards
+          data={boutiqueOverview.data}
+          isLoading={boutiqueOverview.isLoading}
+          isError={boutiqueOverview.isError}
+        />
+      ) : null}
 
       {activeQuery.isLoading ? <AnalyticsSkeleton /> : null}
 
