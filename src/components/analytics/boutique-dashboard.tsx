@@ -1,15 +1,20 @@
 "use client";
 
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowUpRight, Package, Sparkles } from "lucide-react";
+import { ActionAlertCard } from "@/components/analytics/action-alert-card";
 import { AnalyticsAreaChart } from "@/components/analytics/analytics-area-chart";
 import { AnalyticsStatCard } from "@/components/analytics/analytics-stat-card";
-import { RankedList } from "@/components/analytics/ranked-list";
+import { DrillDownDrawer } from "@/components/analytics/drill-down-drawer";
+import { InsightCard } from "@/components/analytics/insight-card";
+import { TopProductsCard } from "@/components/analytics/top-products-card";
 import { Card } from "@/components/ui/card";
+import { useBoutiquePendingActions, useProductDrilldown } from "@/hooks/use-analytics";
 import { ROUTES } from "@/lib/constants/routes";
-import type { BoutiqueAnalytics } from "@/types/analytics";
+import type { BoutiqueAnalytics, ChartPoint } from "@/types/analytics";
 
 interface BoutiqueDashboardProps {
   data: BoutiqueAnalytics;
@@ -29,9 +34,62 @@ function formatAddedDate(raw?: unknown) {
   return format(new Date(raw), "dd MMM yyyy");
 }
 
+function formatDrilldownDate(date: string) {
+  try {
+    return format(parseISO(date), "MMM d, yyyy");
+  } catch {
+    return date;
+  }
+}
+
 export function BoutiqueDashboard({ data, isFetching }: BoutiqueDashboardProps) {
   const { cards, charts, sections } = data;
   const recentProducts = sections.recentlyAddedProducts;
+
+  const [drilldownDate, setDrilldownDate] = useState<string | null>(null);
+  const [drilldownPage, setDrilldownPage] = useState(1);
+
+  const pendingActions = useBoutiquePendingActions(data.boutiqueId, Boolean(data.boutiqueId));
+
+  const drilldownQuery = useMemo(
+    () =>
+      drilldownDate
+        ? {
+            boutiqueId: data.boutiqueId,
+            date: drilldownDate,
+            page: drilldownPage,
+            limit: 10,
+            sort: "viewsDesc" as const,
+          }
+        : null,
+    [data.boutiqueId, drilldownDate, drilldownPage],
+  );
+
+  const drilldown = useProductDrilldown(drilldownQuery, Boolean(drilldownQuery));
+
+  const topProduct = sections.topPerformingProducts[0];
+  const topInsight = topProduct
+    ? {
+        insight: `${topProduct.percentage ?? topProduct.meta?.percentage ?? 0}% of views from ${topProduct.label}`,
+        action: `Promote ${topProduct.label} — consider hero banner placement`,
+      }
+    : null;
+
+  const handleChartClick = useCallback((point: ChartPoint) => {
+    const dateKey = (point.date ?? "").slice(0, 10);
+    if (!dateKey || point.value <= 0) return;
+    setDrilldownPage(1);
+    setDrilldownDate(dateKey);
+  }, []);
+
+  const closeDrilldown = useCallback(() => {
+    setDrilldownDate(null);
+    setDrilldownPage(1);
+  }, []);
+
+  const selectedPoint = drilldownDate
+    ? charts.productViewTrends.find((p) => p.date === drilldownDate)
+    : null;
 
   return (
     <AnimatePresence mode="wait">
@@ -43,6 +101,14 @@ export function BoutiqueDashboard({ data, isFetching }: BoutiqueDashboardProps) 
         transition={{ duration: 0.3 }}
         className="space-y-6"
       >
+        {pendingActions.data ? (
+          <ActionAlertCard data={pendingActions.data} />
+        ) : null}
+
+        {topInsight ? (
+          <InsightCard insight={topInsight.insight} action={topInsight.action} />
+        ) : null}
+
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           <AnalyticsStatCard title="Boutique Views" value={cards.profileVisits} highlight />
           <AnalyticsStatCard title="Total Products" value={cards.totalProducts} href={ROUTES.products} />
@@ -56,12 +122,17 @@ export function BoutiqueDashboard({ data, isFetching }: BoutiqueDashboardProps) 
         </section>
 
         <section className="grid gap-4 lg:grid-cols-2">
-          <AnalyticsAreaChart title="Product View Trends" data={charts.productViewTrends} />
-          <AnalyticsAreaChart title="Appointment Trends" data={charts.appointmentTrends} />
+          <AnalyticsAreaChart
+            title="Product View Trends"
+            data={charts.productViewTrends}
+            onPointClick={handleChartClick}
+            enableInsights
+          />
+          <AnalyticsAreaChart title="Appointment Trends" data={charts.appointmentTrends} enableInsights />
         </section>
 
         <section>
-          <RankedList title="Top Performing Products" items={sections.topPerformingProducts} />
+          <TopProductsCard items={sections.topPerformingProducts} />
         </section>
 
         <Card className="overflow-hidden p-0">
@@ -144,6 +215,18 @@ export function BoutiqueDashboard({ data, isFetching }: BoutiqueDashboardProps) 
           )}
         </Card>
       </motion.div>
+
+      <DrillDownDrawer
+        open={Boolean(drilldownDate)}
+        onClose={closeDrilldown}
+        dateLabel={drilldownDate ? formatDrilldownDate(drilldownDate) : ""}
+        totalViews={selectedPoint?.value ?? drilldown.data?.totalViews ?? 0}
+        data={drilldown.data}
+        isLoading={drilldown.isLoading}
+        isError={drilldown.isError}
+        page={drilldownPage}
+        onPageChange={setDrilldownPage}
+      />
     </AnimatePresence>
   );
 }
