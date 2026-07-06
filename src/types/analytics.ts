@@ -1,5 +1,6 @@
 export type AnalyticsPreset = "today" | "7d" | "30d" | "custom";
 export type DashboardLayer = "platform" | "boutique" | "customer";
+export type ChartTrend = "up" | "down" | "flat";
 
 export interface DateRangeQuery {
   range?: AnalyticsPreset;
@@ -8,16 +9,145 @@ export interface DateRangeQuery {
   boutiqueId?: string;
 }
 
-export interface AnalyticsSeriesPoint {
+export interface ChartPoint {
   date: string;
   value: number;
+  previousValue?: number;
+  difference?: number;
+  growthPercent?: number;
+  trend?: ChartTrend;
+}
+
+export type AnalyticsSeriesPoint = ChartPoint;
+
+export interface ProductTrend {
+  productId: string;
+  productName: string;
+  views: number;
+  percentage: number;
+  boutiqueId: string;
+  boutiqueName: string;
+  image?: string | null;
+  price?: number | null;
+}
+
+export interface ProductPercentage {
+  id: string;
+  label: string;
+  count: number;
+  percentage: number;
+  image?: string | null;
+  growthPercent?: number;
+  boutiqueId?: string;
+  boutiqueName?: string;
 }
 
 export interface RankedItem {
   id: string;
   label: string;
   count: number;
-  meta?: Record<string, unknown>;
+  percentage?: number;
+  meta?: {
+    lastSearchDate?: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface CustomerInsightProduct {
+  productId: string;
+  productName: string;
+  views?: number;
+  percentage?: number;
+  boutiqueId?: string;
+  boutiqueName?: string;
+  image?: string | null;
+  price?: number | null;
+}
+
+export interface CustomerInsightBoutique {
+  boutiqueId: string;
+  boutiqueName: string;
+  views: number;
+  percentage?: number;
+}
+
+export interface SearchKeywordDrilldownResponse {
+  keyword: string;
+  searchCount: number;
+  range: { from: string; to: string; preset: string };
+  relatedProducts: CustomerInsightProduct[];
+  topViewedProducts: CustomerInsightProduct[];
+  topBoutiques: CustomerInsightBoutique[];
+}
+
+export interface CategoryDetailDrilldownResponse {
+  category: string;
+  views: number;
+  wishlistCount: number;
+  range: { from: string; to: string; preset: string };
+  topProducts: CustomerInsightProduct[];
+  topBoutiques: CustomerInsightBoutique[];
+}
+
+export interface CustomerInsightDrilldownQuery extends DateRangeQuery {
+  keyword?: string;
+  category?: string;
+}
+
+export interface BoutiquePendingStep {
+  key: string;
+  label: string;
+  status: "pending" | "completed";
+  priority: "high" | "medium" | "low";
+}
+
+export interface BoutiquePendingAction {
+  boutiqueId: string;
+  boutiqueName: string;
+  gstUploaded: boolean;
+  panUploaded: boolean;
+  hallmarkUploaded: boolean;
+  productsUploaded: number;
+  requiredProducts: number;
+  storeStatus: string;
+  verificationStatus: string;
+  hasPendingActions: boolean;
+  pendingSteps: BoutiquePendingStep[];
+}
+
+export interface ProductDrilldownResponse {
+  date: string;
+  boutiqueId: string;
+  boutiqueName: string;
+  totalViews: number;
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  items: ProductTrend[];
+  topInsight: {
+    productName: string;
+    percentage: number;
+    views: number;
+    recommendedAction: string;
+  } | null;
+}
+
+export interface CustomerAnalytics {
+  range: { from: string; to: string; preset: string };
+  cards: {
+    totalCustomers: number;
+    newUsers: number;
+    wishlistActivity: number;
+  };
+  charts: {
+    userActivityTimeline: ChartPoint[];
+    wishlistGrowth: ChartPoint[];
+  };
+  sections: {
+    topSearchKeywords: RankedItem[];
+    mostViewedCategories?: RankedItem[];
+  };
 }
 
 export interface PlatformAnalytics {
@@ -32,10 +162,10 @@ export interface PlatformAnalytics {
     totalAppointments: number;
   };
   charts: {
-    userGrowth: AnalyticsSeriesPoint[];
-    boutiqueApprovalTrends: AnalyticsSeriesPoint[];
-    productUploadTrends: AnalyticsSeriesPoint[];
-    appointmentTrends: AnalyticsSeriesPoint[];
+    userGrowth: ChartPoint[];
+    boutiqueApprovalTrends: ChartPoint[];
+    productUploadTrends: ChartPoint[];
+    appointmentTrends: ChartPoint[];
   };
   sections: {
     topPerformingBoutiques: Array<{
@@ -63,10 +193,10 @@ export interface BoutiqueAnalytics {
     whatsappClicks: number;
   };
   charts: {
-    productViewTrends: AnalyticsSeriesPoint[];
-    appointmentTrends: AnalyticsSeriesPoint[];
-    revenueAnalytics: AnalyticsSeriesPoint[];
-    customerEngagement: AnalyticsSeriesPoint[];
+    productViewTrends: ChartPoint[];
+    appointmentTrends: ChartPoint[];
+    revenueAnalytics: ChartPoint[];
+    customerEngagement: ChartPoint[];
   };
   sections: {
     topPerformingProducts: RankedItem[];
@@ -76,26 +206,6 @@ export interface BoutiqueAnalytics {
     trafficSources: RankedItem[];
   };
   aiInsightsReady: boolean;
-}
-
-export interface CustomerAnalytics {
-  range: { from: string; to: string; preset: string };
-  cards: {
-    totalCustomers: number;
-    newUsers: number;
-    wishlistActivity: number;
-    searchTrends: number;
-    recentlyViewedCount: number;
-  };
-  charts: {
-    userActivityTimeline: AnalyticsSeriesPoint[];
-    searchAnalytics: AnalyticsSeriesPoint[];
-    wishlistGrowth: AnalyticsSeriesPoint[];
-  };
-  sections: {
-    topSearchKeywords: RankedItem[];
-    mostViewedCategories: RankedItem[];
-  };
 }
 
 export interface BoutiqueAnalyticsOption {
@@ -119,4 +229,12 @@ export interface BoutiqueOverviewStats {
     mostAppointments: BoutiqueOverviewStat | null;
     maxProducts: BoutiqueOverviewStat | null;
   };
+}
+
+export interface DrilldownQuery {
+  boutiqueId: string;
+  date: string;
+  page?: number;
+  limit?: number;
+  sort?: "viewsDesc" | "viewsAsc";
 }

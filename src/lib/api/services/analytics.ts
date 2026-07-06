@@ -1,14 +1,78 @@
 import { api } from "@/lib/api";
+import { enrichTopPerformingProducts, withViewPercentages } from "@/lib/analytics/insights";
 import type { ApiResponse } from "@/types";
 import type {
   BoutiqueAnalytics,
   BoutiqueAnalyticsOption,
   BoutiqueOverviewStats,
+  BoutiquePendingAction,
   CustomerAnalytics,
+  CustomerInsightDrilldownQuery,
+  CategoryDetailDrilldownResponse,
   DateRangeQuery,
   DashboardLayer,
+  DrilldownQuery,
   PlatformAnalytics,
+  ProductDrilldownResponse,
+  SearchKeywordDrilldownResponse,
 } from "@/types/analytics";
+
+function buildInsightParams(query: CustomerInsightDrilldownQuery = {}) {
+  const params = new URLSearchParams();
+  if (query.range) params.set("range", query.range);
+  if (query.from) params.set("from", query.from);
+  if (query.to) params.set("to", query.to);
+  if (query.keyword) params.set("keyword", query.keyword);
+  if (query.category) params.set("category", query.category);
+  return params;
+}
+
+async function enrichCustomerAnalyticsSections(
+  data: CustomerAnalytics,
+  query?: DateRangeQuery,
+): Promise<CustomerAnalytics> {
+  const categories = withViewPercentages(data.sections.mostViewedCategories ?? []);
+
+  try {
+    const res = await fetch("/api/admin/analytics/customer-sections-enrich", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        range: query?.range ?? data.range.preset,
+        from: query?.from ?? data.range.from,
+        to: query?.to ?? data.range.to,
+        sections: {
+          topSearchKeywords: data.sections.topSearchKeywords ?? [],
+          mostViewedCategories: categories,
+        },
+      }),
+    });
+    const json = (await res.json()) as ApiResponse<{
+      topSearchKeywords: CustomerAnalytics["sections"]["topSearchKeywords"];
+      mostViewedCategories: CustomerAnalytics["sections"]["mostViewedCategories"];
+    }>;
+
+    if (res.ok && json.data) {
+      return {
+        ...data,
+        sections: {
+          topSearchKeywords: json.data.topSearchKeywords,
+          mostViewedCategories: json.data.mostViewedCategories,
+        },
+      };
+    }
+  } catch {
+    // Fall back to client-side percentage enrichment only.
+  }
+
+  return {
+    ...data,
+    sections: {
+      ...data.sections,
+      mostViewedCategories: categories,
+    },
+  };
+}
 
 function buildParams(query: DateRangeQuery = {}) {
   const params: Record<string, string> = {};
@@ -56,7 +120,14 @@ export async function getBoutiqueAnalytics(query: DateRangeQuery) {
     params: buildParams(query),
     timeout: 60000,
   });
-  return data.data;
+  const boutique = data.data;
+  return {
+    ...boutique,
+    sections: {
+      ...boutique.sections,
+      topPerformingProducts: enrichTopPerformingProducts(boutique.sections.topPerformingProducts),
+    },
+  };
 }
 
 export async function getBoutiqueOverviewStats(query?: DateRangeQuery) {
@@ -79,10 +150,84 @@ export async function getBoutiqueOverviewStats(query?: DateRangeQuery) {
 }
 
 export async function getCustomerAnalytics(query?: DateRangeQuery) {
+  try {
+    const { data } = await api.get<ApiResponse<CustomerAnalytics>>("/analytics/customers/analytics", {
+      params: buildParams(query),
+      timeout: 60000,
+    });
+    return enrichCustomerAnalyticsSections(data.data, query);
+  } catch {
+    const legacy = await getLegacyCustomerAnalytics(query);
+    return enrichCustomerAnalyticsSections(legacy, query);
+  }
+}
+
+/** @deprecated Use getCustomerAnalytics — kept for backward compatibility */
+export async function getLegacyCustomerAnalytics(query?: DateRangeQuery) {
   const { data } = await api.get<ApiResponse<CustomerAnalytics>>("/analytics/customer", {
     params: buildParams(query),
     timeout: 60000,
   });
+  return data.data;
+}
+
+export async function getSearchKeywordDrilldown(query: CustomerInsightDrilldownQuery) {
+  const params = buildInsightParams(query);
+  const res = await fetch(`/api/admin/analytics/search-drilldown?${params.toString()}`);
+  const json = (await res.json()) as ApiResponse<SearchKeywordDrilldownResponse> & {
+    message?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(json.message ?? "Failed to load search keyword drilldown");
+  }
+
+  return json.data;
+}
+
+export async function getCategoryDetailDrilldown(query: CustomerInsightDrilldownQuery) {
+  const params = buildInsightParams(query);
+  const res = await fetch(`/api/admin/analytics/category-drilldown?${params.toString()}`);
+  const json = (await res.json()) as ApiResponse<CategoryDetailDrilldownResponse> & {
+    message?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(json.message ?? "Failed to load category drilldown");
+  }
+
+  return json.data;
+}
+
+export async function getProductDrilldown(query: DrilldownQuery) {
+  const params = new URLSearchParams({
+    boutiqueId: query.boutiqueId,
+    date: query.date.slice(0, 10),
+    page: String(query.page ?? 1),
+    limit: String(query.limit ?? 10),
+    sort: query.sort ?? "viewsDesc",
+  });
+
+  const res = await fetch(`/api/admin/analytics/product-drilldown?${params.toString()}`);
+  const json = (await res.json()) as ApiResponse<ProductDrilldownResponse> & {
+    message?: string;
+  };
+
+  if (!res.ok) {
+    throw new Error(json.message ?? "Failed to load product drilldown");
+  }
+
+  return json.data;
+}
+
+export async function getBoutiquePendingActions(boutiqueId: string) {
+  const { data } = await api.get<ApiResponse<BoutiquePendingAction>>(
+    "/analytics/boutique-pending-actions",
+    {
+      params: { boutiqueId },
+      timeout: 30000,
+    },
+  );
   return data.data;
 }
 
