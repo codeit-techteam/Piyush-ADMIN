@@ -30,6 +30,8 @@ interface AnalyticsAreaChartProps {
   growthLabel?: string;
   onPointClick?: (point: ChartPoint) => void;
   enableInsights?: boolean;
+  clickHint?: string;
+  drillDownLabel?: string;
 }
 
 const CHART_AXIS_DEFAULTS: Record<string, { yAxisLabel: string; valueLabel: string }> = {
@@ -83,6 +85,7 @@ function InsightTooltip({
   growthLabel = "vs previous day",
   enableInsights,
   onPointClick,
+  drillDownLabel = "View product breakdown",
 }: {
   active?: boolean;
   payload?: Array<{ payload?: ChartPayload }>;
@@ -92,6 +95,7 @@ function InsightTooltip({
   growthLabel?: string;
   enableInsights: boolean;
   onPointClick?: (point: ChartPoint) => void;
+  drillDownLabel?: string;
 }) {
   if (!active || !payload?.length) return null;
   const point = payload[0]?.payload;
@@ -133,7 +137,7 @@ function InsightTooltip({
             onPointClick?.(toChartPoint(point));
           }}
         >
-          View product breakdown
+          {drillDownLabel}
           <ChevronRight className="h-3.5 w-3.5" aria-hidden />
         </button>
       ) : null}
@@ -179,6 +183,8 @@ export function AnalyticsAreaChart({
   growthLabel,
   onPointClick,
   enableInsights = true,
+  clickHint = "Click any day on the chart to see which products drove those views",
+  drillDownLabel = "View product breakdown",
 }: AnalyticsAreaChartProps) {
   const axisDefaults = CHART_AXIS_DEFAULTS[title] ?? {
     yAxisLabel: "Count",
@@ -255,9 +261,7 @@ export function AnalyticsAreaChart({
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
         {onPointClick ? (
-          <p className="mt-0.5 text-[11px] text-slate-500">
-            Click any day on the chart to see which products drove those views
-          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500">{clickHint}</p>
         ) : null}
       </div>
       {chartData.length === 0 ? (
@@ -327,6 +331,7 @@ export function AnalyticsAreaChart({
                         growthLabel={growthLabel}
                         enableInsights={enableInsights}
                         onPointClick={onPointClick}
+                        drillDownLabel={drillDownLabel}
                       />
                     }
                   />

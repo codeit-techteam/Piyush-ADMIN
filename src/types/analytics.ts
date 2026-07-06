@@ -71,6 +71,17 @@ export interface CustomerInsightBoutique {
   percentage?: number;
 }
 
+export interface MatchingCategory {
+  id: string;
+  label: string;
+  count: number;
+  percentage?: number;
+}
+
+export interface RecentSearchEntry {
+  searchedAt: string;
+}
+
 export interface SearchKeywordDrilldownResponse {
   keyword: string;
   searchCount: number;
@@ -78,10 +89,13 @@ export interface SearchKeywordDrilldownResponse {
   relatedProducts: CustomerInsightProduct[];
   topViewedProducts: CustomerInsightProduct[];
   topBoutiques: CustomerInsightBoutique[];
+  matchingCategories: MatchingCategory[];
+  recentSearches: RecentSearchEntry[];
 }
 
 export interface CategoryDetailDrilldownResponse {
   category: string;
+  categoryId?: string | null;
   views: number;
   wishlistCount: number;
   range: { from: string; to: string; preset: string };
@@ -92,6 +106,62 @@ export interface CategoryDetailDrilldownResponse {
 export interface CustomerInsightDrilldownQuery extends DateRangeQuery {
   keyword?: string;
   category?: string;
+  categoryId?: string;
+}
+
+export interface CustomerActivityDetailsQuery extends DateRangeQuery {
+  date?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export interface ActivityDetailsResponse {
+  date: string | null;
+  range: { from: string; to: string };
+  totalCustomerActivities: number;
+  newUserRegistrations: number;
+  wishlistActivities: number;
+  searchActivities: number;
+  recentlyViewedActivities: number;
+  appointmentActivities: number;
+}
+
+export interface WishlistedProduct {
+  productId: string;
+  productName: string;
+  boutiqueId?: string | null;
+  boutiqueName?: string;
+  image?: string | null;
+  price?: number | null;
+  addedAt: string;
+}
+
+export interface TopWishlistedProduct {
+  productId: string;
+  productName: string;
+  count: number;
+  percentage: number;
+  boutiqueId?: string | null;
+  boutiqueName?: string;
+  image?: string | null;
+  price?: number | null;
+}
+
+export interface TopWishlistedBoutique {
+  boutiqueId: string;
+  boutiqueName: string;
+  count: number;
+  percentage: number;
+}
+
+export interface WishlistDetailsResponse {
+  date: string | null;
+  range: { from: string; to: string };
+  wishlistAdded: number;
+  productsAddedToWishlist: WishlistedProduct[];
+  topWishlistedProducts: TopWishlistedProduct[];
+  topWishlistedBoutique: TopWishlistedBoutique | null;
+  topWishlistedBoutiques: TopWishlistedBoutique[];
 }
 
 export interface BoutiquePendingStep {

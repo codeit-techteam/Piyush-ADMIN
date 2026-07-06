@@ -99,7 +99,7 @@ export async function computeProductDrilldown(
 
   const totalViews = viewsRes.data?.length ?? 0;
 
-  let ranked = [...viewCounts.entries()].map(([productId, views]) => {
+  const ranked = [...viewCounts.entries()].map(([productId, views]) => {
     const product = productMap.get(productId);
     return {
       productId,
