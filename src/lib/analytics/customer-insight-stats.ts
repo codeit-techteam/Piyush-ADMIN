@@ -5,7 +5,9 @@ import type {
   CategoryDetailDrilldownResponse,
   CustomerInsightBoutique,
   CustomerInsightProduct,
+  MatchingCategory,
   RankedItem,
+  RecentSearchEntry,
   SearchKeywordDrilldownResponse,
 } from "@/types/analytics";
 
@@ -134,7 +136,9 @@ export async function computeSearchKeywordDrilldown(
       .limit(8000),
     supabase
       .from("products")
-      .select("id, name, price, image, primary_image, thumbnail, featured_image, boutique_id")
+      .select(
+        "id, name, price, image, primary_image, thumbnail, featured_image, boutique_id, categories!category_id(name)",
+      )
       .limit(2000),
     supabase.from("boutiques").select("id, name").limit(500),
   ]);
@@ -144,26 +148,42 @@ export async function computeSearchKeywordDrilldown(
   if (productsRes.error) throw new Error(productsRes.error.message);
   if (boutiquesRes.error) throw new Error(boutiquesRes.error.message);
 
-  const searchRows = (searchRes.data ?? []).filter(
-    (row) => String(row.keyword ?? "").trim().toLowerCase() === keywordLower,
-  );
+  const searchRows = (searchRes.data ?? [])
+    .filter((row) => String(row.keyword ?? "").trim().toLowerCase() === keywordLower)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   const searchCount = searchRows.length;
   const searcherIds = new Set(searchRows.map((row) => row.user_id).filter(Boolean));
 
   const boutiqueMap = new Map((boutiquesRes.data ?? []).map((b) => [b.id, b.name ?? "Boutique"]));
   const productMap = new Map((productsRes.data ?? []).map((p) => [p.id, p]));
 
-  const relatedProducts: CustomerInsightProduct[] = (productsRes.data ?? [])
-    .filter((p) => String(p.name ?? "").toLowerCase().includes(keywordLower))
-    .slice(0, 10)
-    .map((p) => ({
-      productId: p.id,
-      productName: p.name ?? "Unknown product",
-      boutiqueId: p.boutique_id ?? undefined,
-      boutiqueName: boutiqueMap.get(p.boutique_id) ?? "Boutique",
-      image: resolveProductImage(p),
-      price: p.price ?? null,
-    }));
+  const matchingProducts = (productsRes.data ?? []).filter((p) =>
+    String(p.name ?? "").toLowerCase().includes(keywordLower),
+  );
+
+  const relatedProducts: CustomerInsightProduct[] = matchingProducts.slice(0, 10).map((p) => ({
+    productId: p.id,
+    productName: p.name ?? "Unknown product",
+    boutiqueId: p.boutique_id ?? undefined,
+    boutiqueName: boutiqueMap.get(p.boutique_id) ?? "Boutique",
+    image: resolveProductImage(p),
+    price: p.price ?? null,
+  }));
+
+  const matchingCategories: MatchingCategory[] = withViewPercentages(
+    topCounts(
+      matchingProducts.filter((p) => (p.categories as { name?: string } | null)?.name),
+      (p) => {
+        const name = (p.categories as { name?: string } | null)?.name ?? "";
+        return { id: name.toLowerCase(), label: name };
+      },
+      10,
+    ),
+  ).map((row) => ({ id: row.id, label: row.label, count: row.count, percentage: row.percentage }));
+
+  const recentSearches: RecentSearchEntry[] = searchRows.slice(0, 10).map((row) => ({
+    searchedAt: row.created_at,
+  }));
 
   const searcherViews = (viewsRes.data ?? []).filter((row) => searcherIds.has(row.user_id));
 
@@ -219,6 +239,8 @@ export async function computeSearchKeywordDrilldown(
     relatedProducts,
     topViewedProducts,
     topBoutiques,
+    matchingCategories,
+    recentSearches,
   };
 }
 

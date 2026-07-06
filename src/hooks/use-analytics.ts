@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
+  getActivityDetails,
   getBoutiqueAnalytics,
   getBoutiqueOverviewStats,
   getBoutiquePendingActions,
@@ -10,9 +11,15 @@ import {
   getPlatformAnalytics,
   getProductDrilldown,
   getSearchKeywordDrilldown,
+  getWishlistDetails,
   listAnalyticsBoutiques,
 } from "@/lib/api/services/analytics";
-import type { CustomerInsightDrilldownQuery, DateRangeQuery, DrilldownQuery } from "@/types/analytics";
+import type {
+  CustomerActivityDetailsQuery,
+  CustomerInsightDrilldownQuery,
+  DateRangeQuery,
+  DrilldownQuery,
+} from "@/types/analytics";
 
 const REFRESH_MS = 60_000;
 
@@ -71,6 +78,26 @@ export function useCategoryDetailDrilldown(query: CustomerInsightDrilldownQuery 
     queryKey: ["analytics", "category-drilldown", query],
     queryFn: () => getCategoryDetailDrilldown(query!),
     enabled: enabled && Boolean(query?.category),
+    staleTime: 30_000,
+    retry: 2,
+  });
+}
+
+export function useActivityDetails(query: CustomerActivityDetailsQuery | null, enabled = true) {
+  return useQuery({
+    queryKey: ["analytics", "activity-details", query],
+    queryFn: () => getActivityDetails(query!),
+    enabled: enabled && Boolean(query?.date || (query?.startDate && query?.endDate)),
+    staleTime: 30_000,
+    retry: 2,
+  });
+}
+
+export function useWishlistDetails(query: CustomerActivityDetailsQuery | null, enabled = true) {
+  return useQuery({
+    queryKey: ["analytics", "wishlist-details", query],
+    queryFn: () => getWishlistDetails(query!),
+    enabled: enabled && Boolean(query?.date || (query?.startDate && query?.endDate)),
     staleTime: 30_000,
     retry: 2,
   });

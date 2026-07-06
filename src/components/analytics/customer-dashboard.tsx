@@ -2,18 +2,22 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { ActivityDetailsDrawer } from "@/components/analytics/activity-details-drawer";
 import { AnalyticsAreaChart } from "@/components/analytics/analytics-area-chart";
 import { AnalyticsStatCard } from "@/components/analytics/analytics-stat-card";
 import { CategoryDetailDrawer } from "@/components/analytics/category-detail-drawer";
 import { MostViewedCategories } from "@/components/analytics/most-viewed-categories";
 import { SearchKeywordDrawer } from "@/components/analytics/search-keyword-drawer";
 import { TopSearchKeywords } from "@/components/analytics/top-search-keywords";
+import { WishlistDetailsDrawer } from "@/components/analytics/wishlist-details-drawer";
 import {
+  useActivityDetails,
   useCategoryDetailDrilldown,
   useSearchKeywordDrilldown,
+  useWishlistDetails,
 } from "@/hooks/use-analytics";
 import { ROUTES } from "@/lib/constants/routes";
-import type { CustomerAnalytics, RankedItem } from "@/types/analytics";
+import type { ChartPoint, CustomerAnalytics, RankedItem } from "@/types/analytics";
 
 const EMPTY_ACTIVITY_LABEL = "No customer activity available yet.";
 
@@ -42,6 +46,8 @@ export function CustomerDashboard({ data }: CustomerDashboardProps) {
 
   const [selectedKeyword, setSelectedKeyword] = useState<RankedItem | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<RankedItem | null>(null);
+  const [selectedActivityPoint, setSelectedActivityPoint] = useState<ChartPoint | null>(null);
+  const [selectedWishlistPoint, setSelectedWishlistPoint] = useState<ChartPoint | null>(null);
 
   const dateQuery = useMemo(
     () => ({
@@ -80,6 +86,19 @@ export function CustomerDashboard({ data }: CustomerDashboardProps) {
     Boolean(categoryDrilldownQuery),
   );
 
+  const activityDetailsQuery = useMemo(
+    () => (selectedActivityPoint ? { date: selectedActivityPoint.date } : null),
+    [selectedActivityPoint],
+  );
+
+  const wishlistDetailsQuery = useMemo(
+    () => (selectedWishlistPoint ? { date: selectedWishlistPoint.date } : null),
+    [selectedWishlistPoint],
+  );
+
+  const activityDetails = useActivityDetails(activityDetailsQuery, Boolean(activityDetailsQuery));
+  const wishlistDetails = useWishlistDetails(wishlistDetailsQuery, Boolean(wishlistDetailsQuery));
+
   const handleKeywordClick = useCallback((keyword: RankedItem) => {
     setSelectedKeyword(keyword);
   }, []);
@@ -88,12 +107,28 @@ export function CustomerDashboard({ data }: CustomerDashboardProps) {
     setSelectedCategory(category);
   }, []);
 
+  const handleActivityPointClick = useCallback((point: ChartPoint) => {
+    setSelectedActivityPoint(point);
+  }, []);
+
+  const handleWishlistPointClick = useCallback((point: ChartPoint) => {
+    setSelectedWishlistPoint(point);
+  }, []);
+
   const closeKeywordDrawer = useCallback(() => {
     setSelectedKeyword(null);
   }, []);
 
   const closeCategoryDrawer = useCallback(() => {
     setSelectedCategory(null);
+  }, []);
+
+  const closeActivityDrawer = useCallback(() => {
+    setSelectedActivityPoint(null);
+  }, []);
+
+  const closeWishlistDrawer = useCallback(() => {
+    setSelectedWishlistPoint(null);
   }, []);
 
   return (
@@ -118,6 +153,9 @@ export function CustomerDashboard({ data }: CustomerDashboardProps) {
             data={charts.userActivityTimeline ?? []}
             enableInsights
             emptyLabel={emptyLabel}
+            onPointClick={handleActivityPointClick}
+            clickHint="Click any day on the chart to see the activity breakdown"
+            drillDownLabel="View activity breakdown"
           />
           <AnalyticsAreaChart
             title="Wishlist Trends"
@@ -126,6 +164,9 @@ export function CustomerDashboard({ data }: CustomerDashboardProps) {
             emptyLabel={emptyLabel}
             valueLabel="Wishlist Added"
             growthLabel="Growth compared to previous day"
+            onPointClick={handleWishlistPointClick}
+            clickHint="Click any day on the chart to see which products were wishlisted"
+            drillDownLabel="View wishlist breakdown"
           />
         </section>
 
@@ -160,6 +201,26 @@ export function CustomerDashboard({ data }: CustomerDashboardProps) {
           data={categoryDrilldown.data}
           isLoading={categoryDrilldown.isLoading}
           isError={categoryDrilldown.isError}
+        />
+
+        <ActivityDetailsDrawer
+          open={Boolean(selectedActivityPoint)}
+          onClose={closeActivityDrawer}
+          date={selectedActivityPoint?.date}
+          totalActivities={selectedActivityPoint?.value}
+          data={activityDetails.data}
+          isLoading={activityDetails.isLoading}
+          isError={activityDetails.isError}
+        />
+
+        <WishlistDetailsDrawer
+          open={Boolean(selectedWishlistPoint)}
+          onClose={closeWishlistDrawer}
+          date={selectedWishlistPoint?.date}
+          wishlistAdded={selectedWishlistPoint?.value}
+          data={wishlistDetails.data}
+          isLoading={wishlistDetails.isLoading}
+          isError={wishlistDetails.isError}
         />
       </motion.div>
     </AnimatePresence>

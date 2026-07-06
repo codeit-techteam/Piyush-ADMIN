@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import { format, parseISO } from "date-fns";
-import { X } from "lucide-react";
+import { Clock, Tag, X } from "lucide-react";
 import {
   CustomerInsightBoutiqueList,
   CustomerInsightProductList,
@@ -25,6 +25,14 @@ function formatRangeDate(raw: string) {
     return format(parseISO(raw), "MMM d, yyyy");
   } catch {
     return raw.slice(0, 10);
+  }
+}
+
+function formatSearchTimestamp(raw: string) {
+  try {
+    return format(parseISO(raw), "MMM d, yyyy · h:mm a");
+  } catch {
+    return raw;
   }
 }
 
@@ -109,6 +117,50 @@ export const SearchKeywordDrawer = memo(function SearchKeywordDrawer({
                 items={data?.topBoutiques ?? []}
                 emptyLabel="No boutique views from searchers yet."
               />
+
+              <div>
+                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                  <Tag className="h-4 w-4 text-slate-500" aria-hidden />
+                  Matching Categories
+                </h3>
+                {(data?.matchingCategories ?? []).length === 0 ? (
+                  <p className="text-sm text-slate-500">No matching categories for this keyword.</p>
+                ) : (
+                  <ul className="flex flex-wrap gap-2">
+                    {(data?.matchingCategories ?? []).map((category) => (
+                      <li
+                        key={category.id}
+                        className="rounded-full border border-blue-100 bg-blue-50/70 px-3 py-1.5 text-xs font-medium text-blue-700"
+                      >
+                        {category.label}
+                        <span className="ml-1.5 text-blue-400">·</span>
+                        <span className="ml-1.5 text-blue-500">{category.count}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div>
+                <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-slate-800">
+                  <Clock className="h-4 w-4 text-slate-500" aria-hidden />
+                  Recent Searches
+                </h3>
+                {(data?.recentSearches ?? []).length === 0 ? (
+                  <p className="text-sm text-slate-500">No recent searches for this keyword.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {(data?.recentSearches ?? []).map((entry, index) => (
+                      <li
+                        key={`${entry.searchedAt}-${index}`}
+                        className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-xs text-slate-600"
+                      >
+                        {formatSearchTimestamp(entry.searchedAt)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </>
           ) : null}
         </div>

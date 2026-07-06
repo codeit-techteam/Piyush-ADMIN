@@ -2,10 +2,12 @@ import { api } from "@/lib/api";
 import { enrichTopPerformingProducts, withViewPercentages } from "@/lib/analytics/insights";
 import type { ApiResponse } from "@/types";
 import type {
+  ActivityDetailsResponse,
   BoutiqueAnalytics,
   BoutiqueAnalyticsOption,
   BoutiqueOverviewStats,
   BoutiquePendingAction,
+  CustomerActivityDetailsQuery,
   CustomerAnalytics,
   CustomerInsightDrilldownQuery,
   CategoryDetailDrilldownResponse,
@@ -15,15 +17,28 @@ import type {
   PlatformAnalytics,
   ProductDrilldownResponse,
   SearchKeywordDrilldownResponse,
+  WishlistDetailsResponse,
 } from "@/types/analytics";
 
 function buildInsightParams(query: CustomerInsightDrilldownQuery = {}) {
-  const params = new URLSearchParams();
-  if (query.range) params.set("range", query.range);
-  if (query.from) params.set("from", query.from);
-  if (query.to) params.set("to", query.to);
-  if (query.keyword) params.set("keyword", query.keyword);
-  if (query.category) params.set("category", query.category);
+  const params: Record<string, string> = {};
+  if (query.range) params.range = query.range;
+  if (query.from) params.from = query.from;
+  if (query.to) params.to = query.to;
+  if (query.keyword) params.keyword = query.keyword;
+  if (query.category) params.category = query.category;
+  if (query.categoryId) params.categoryId = query.categoryId;
+  return params;
+}
+
+function buildDateDetailParams(query: CustomerActivityDetailsQuery = {}) {
+  const params: Record<string, string> = {};
+  if (query.date) params.date = query.date;
+  if (query.startDate) params.startDate = query.startDate;
+  if (query.endDate) params.endDate = query.endDate;
+  if (query.range) params.range = query.range;
+  if (query.from) params.from = query.from;
+  if (query.to) params.to = query.to;
   return params;
 }
 
@@ -172,31 +187,35 @@ export async function getLegacyCustomerAnalytics(query?: DateRangeQuery) {
 }
 
 export async function getSearchKeywordDrilldown(query: CustomerInsightDrilldownQuery) {
-  const params = buildInsightParams(query);
-  const res = await fetch(`/api/admin/analytics/search-drilldown?${params.toString()}`);
-  const json = (await res.json()) as ApiResponse<SearchKeywordDrilldownResponse> & {
-    message?: string;
-  };
-
-  if (!res.ok) {
-    throw new Error(json.message ?? "Failed to load search keyword drilldown");
-  }
-
-  return json.data;
+  const { data } = await api.get<ApiResponse<SearchKeywordDrilldownResponse>>(
+    "/analytics/customers/search-keyword-details",
+    { params: buildInsightParams(query), timeout: 30000 },
+  );
+  return data.data;
 }
 
 export async function getCategoryDetailDrilldown(query: CustomerInsightDrilldownQuery) {
-  const params = buildInsightParams(query);
-  const res = await fetch(`/api/admin/analytics/category-drilldown?${params.toString()}`);
-  const json = (await res.json()) as ApiResponse<CategoryDetailDrilldownResponse> & {
-    message?: string;
-  };
+  const { data } = await api.get<ApiResponse<CategoryDetailDrilldownResponse>>(
+    "/analytics/customers/category-details",
+    { params: buildInsightParams(query), timeout: 30000 },
+  );
+  return data.data;
+}
 
-  if (!res.ok) {
-    throw new Error(json.message ?? "Failed to load category drilldown");
-  }
+export async function getActivityDetails(query: CustomerActivityDetailsQuery) {
+  const { data } = await api.get<ApiResponse<ActivityDetailsResponse>>(
+    "/analytics/customers/activity-details",
+    { params: buildDateDetailParams(query), timeout: 30000 },
+  );
+  return data.data;
+}
 
-  return json.data;
+export async function getWishlistDetails(query: CustomerActivityDetailsQuery) {
+  const { data } = await api.get<ApiResponse<WishlistDetailsResponse>>(
+    "/analytics/customers/wishlist-details",
+    { params: buildDateDetailParams(query), timeout: 30000 },
+  );
+  return data.data;
 }
 
 export async function getProductDrilldown(query: DrilldownQuery) {
