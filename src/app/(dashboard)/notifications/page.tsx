@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight, Send } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/feedback/error-state";
+import { SmartEngagementSection } from "@/components/notifications/smart-engagement-section";
 import {
   useAdminNotificationsList,
   useNotificationStats,
@@ -133,6 +134,10 @@ export default function NotificationsDashboardPage() {
           </>
         )}
       </Card>
+
+      <div className="mt-8 border-t border-slate-200 pt-8">
+        <SmartEngagementSection />
+      </div>
     </div>
   );
 }
