@@ -9,6 +9,7 @@ import {
   getCategoryDetailDrilldown,
   getCustomerAnalytics,
   getPlatformAnalytics,
+  getPlatformDayDetails,
   getProductDrilldown,
   getSearchKeywordDrilldown,
   getWishlistDetails,
@@ -19,6 +20,7 @@ import type {
   CustomerInsightDrilldownQuery,
   DateRangeQuery,
   DrilldownQuery,
+  PlatformDayDetailsQuery,
 } from "@/types/analytics";
 
 const REFRESH_MS = 60_000;
@@ -29,6 +31,16 @@ export function usePlatformAnalytics(query: DateRangeQuery, enabled = true) {
     queryFn: () => getPlatformAnalytics(query),
     enabled,
     refetchInterval: enabled ? REFRESH_MS : false,
+    retry: 2,
+  });
+}
+
+export function usePlatformDayDetails(query: PlatformDayDetailsQuery | null, enabled = true) {
+  return useQuery({
+    queryKey: ["analytics", "platform-day-details", query],
+    queryFn: () => getPlatformDayDetails(query!),
+    enabled: enabled && Boolean(query?.date),
+    staleTime: 30_000,
     retry: 2,
   });
 }

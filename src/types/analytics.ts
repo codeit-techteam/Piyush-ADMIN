@@ -308,3 +308,31 @@ export interface DrilldownQuery {
   limit?: number;
   sort?: "viewsDesc" | "viewsAsc";
 }
+
+export type PlatformDrilldownMetric =
+  | "userGrowth"
+  | "appointmentTrends"
+  | "boutiqueApprovalTrends"
+  | "productUploadTrends";
+
+export interface PlatformDayDetailsQuery {
+  date: string;
+  metric: PlatformDrilldownMetric;
+}
+
+export interface PlatformDayDetailItem {
+  id: string;
+  title: string;
+  subtitle?: string | null;
+  badge?: string | null;
+  createdAt: string;
+}
+
+export interface PlatformDayDetailsResponse {
+  date: string;
+  metric: PlatformDrilldownMetric;
+  range: { from: string; to: string };
+  total: number;
+  breakdown: Record<string, number>;
+  items: PlatformDayDetailItem[];
+}

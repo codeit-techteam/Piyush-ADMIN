@@ -15,6 +15,8 @@ import type {
   DashboardLayer,
   DrilldownQuery,
   PlatformAnalytics,
+  PlatformDayDetailsQuery,
+  PlatformDayDetailsResponse,
   ProductDrilldownResponse,
   SearchKeywordDrilldownResponse,
   WishlistDetailsResponse,
@@ -128,6 +130,14 @@ export async function getPlatformAnalytics(query?: DateRangeQuery) {
   ]);
 
   return enrichTopPerformingBoutiqueLocations(platformRes.data.data, boutiques);
+}
+
+export async function getPlatformDayDetails(query: PlatformDayDetailsQuery) {
+  const { data } = await api.get<ApiResponse<PlatformDayDetailsResponse>>(
+    "/analytics/platform/day-details",
+    { params: { date: query.date.slice(0, 10), metric: query.metric }, timeout: 30000 },
+  );
+  return data.data;
 }
 
 export async function getBoutiqueAnalytics(query: DateRangeQuery) {
